@@ -2,11 +2,10 @@
 
 import argparse
 import logging
-import sys
 
 import uvicorn
 
-from .proxy import create_app, DEFAULT_TARGET_URL
+from .proxy import DEFAULT_TARGET_URL, create_app
 from .storage import JSONLStorage
 
 
@@ -52,7 +51,7 @@ def main():
     storage = JSONLStorage(args.output)
     app = create_app(args.target, storage)
 
-    print(f"Starting LLM Trace proxy server...")
+    print("Starting LLM Trace proxy server...")
     print(f"  Listening on: http://{args.host}:{args.port}")
     print(f"  Target API:   {args.target}")
     print(f"  Output file:  {args.output}")

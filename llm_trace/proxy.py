@@ -1,15 +1,15 @@
 """Proxy server for intercepting LLM API requests."""
 
 import json
+import logging
 import time
 from collections.abc import AsyncIterator
 
-import logging
 import httpx
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse, StreamingResponse, Response
-from starlette.routing import Route, Mount
+from starlette.responses import JSONResponse, Response, StreamingResponse
+from starlette.routing import Route
 
 from .models import TraceRecord
 from .storage import JSONLStorage
@@ -86,14 +86,18 @@ class LLMProxy:
         record = TraceRecord(request=request_data) if should_trace else None
 
         if record:
-            logging.info(f"Record non-stream LLM Call")
+            logging.info("Record non-stream LLM Call")
 
         try:
             # Use JSON body if available, otherwise raw body
             if request_data is not None:
-                response = await self.client.request(method, url, headers=headers, json=request_data)
+                response = await self.client.request(
+                    method, url, headers=headers, json=request_data
+                )
             else:
-                response = await self.client.request(method, url, headers=headers, content=raw_body)
+                response = await self.client.request(
+                    method, url, headers=headers, content=raw_body
+                )
 
             duration_ms = int((time.time() - start_time) * 1000)
 
@@ -139,7 +143,7 @@ class LLMProxy:
         """Handle streaming request."""
         record = TraceRecord(request=request_data)
 
-        logging.info(f"Record stream LLM Call")
+        logging.info("Record stream LLM Call")
 
         async def generate() -> AsyncIterator[bytes]:
             chunks: list[str] = []
