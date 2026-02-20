@@ -92,7 +92,7 @@ export function RequestDetail({ request, getMessage, getTool, getRequest }: Requ
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-y-auto p-6" style={{ paddingBottom: 0 }}>
+        <div className="flex-1 overflow-y-auto p-6 pb-0">
           {activeTab === 'messages' ? (
             <DiffView
               diff={diff}
@@ -123,12 +123,11 @@ export function RequestDetail({ request, getMessage, getTool, getRequest }: Requ
             Response
           </h2>
         </div>
-        <div className="p-6 bg-bg-secondary max-h-80 overflow-y-auto">
+        <div className="p-6 bg-bg-secondary max-h-[30vh] overflow-y-auto">
           {responseMessage ? (
             <MessageCard
               message={responseMessage}
-              isExpanded={expandedMessageId === responseMessage.id}
-              onToggleExpand={() => handleToggleExpand(responseMessage.id)}
+              isExpanded={true}
             />
           ) : (
             <div className="text-center text-text-muted py-4">
