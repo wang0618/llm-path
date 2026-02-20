@@ -348,7 +348,7 @@ The `cook` command transforms traces into a deduplicated, visualization-ready fo
 ```json
 {
   "id": "m0",
-  "role": "system" | "user" | "assistant" | "tool_use" | "tool_result",
+  "role": "system" | "user" | "assistant" | "tool_use" | "tool_result" | "thinking",
   "content": "string",
   "tool_calls": [{"name": "...", "arguments": {...}}] | null
 }
@@ -373,12 +373,14 @@ The `cook` command transforms traces into a deduplicated, visualization-ready fo
   "parent_id": "uuid" | null,
   "timestamp": 1708419600000,
   "request_messages": ["m0", "m1", "m2"],
-  "response_message": "m3",
+  "response_messages": ["m3"],
   "model": "gpt-4",
   "tools": ["t0", "t1"],
   "duration_ms": 1200
 }
 ```
+
+Note: `response_messages` is an array to support multiple response parts (e.g., thinking + assistant message).
 
 ---
 
@@ -408,13 +410,14 @@ Otherwise, it's treated as **OpenAI** format.
 | Claude `user` | has tool_result blocks | `tool_result` (separate messages) |
 | Claude `assistant` | text blocks only | `assistant` |
 | Claude `assistant` | has tool_use blocks | `tool_use` |
+| Claude `assistant` | thinking blocks | `thinking` (separate messages) |
 
 ### Content Block Processing (Claude)
 
 | Block Type | Processing |
 |------------|------------|
 | `text` | Each block becomes a separate message |
-| `thinking` | Prepended to next text/tool_use message with `thinking:\n` prefix |
+| `thinking` | Separate message with `thinking` role |
 | `tool_use` | Collected into `tool_calls` array: `{name, arguments: input}` |
 | `tool_result` | Separate message with `tool_result` role |
 | `image` | Placeholder `[image]` |
@@ -450,23 +453,10 @@ Identical messages/tools across requests share the same ID.
 
 ### Thinking Block Handling
 
-Thinking blocks are included with full content (not truncated). Format:
-
-```
-thinking:
-{thinking_content}
-
-{actual_response}
-```
-
-If a thinking block precedes a `tool_use` block (no text), it's attached to the tool_use message:
-
-```
-thinking:
-{thinking_content}
-```
-
-With `tool_calls` containing the tool use information.
+Thinking blocks are extracted as separate messages with role `thinking`. This enables:
+- Better visualization with distinct styling
+- Filtering/collapsing thinking content independently
+- Multiple response messages per request (e.g., `["thinking_msg_id", "assistant_msg_id"]`)
 
 ### Streaming Response (SSE) Parsing
 
@@ -549,7 +539,10 @@ Claude content blocks are reconstructed and converted to the standard response f
 [
   {"id": "m0", "role": "system", "content": "Be helpful", "tool_calls": null},
   {"id": "m1", "role": "user", "content": "What's 2+2?", "tool_calls": null},
-  {"id": "m2", "role": "tool_use", "content": "thinking:\nSimple math question", "tool_calls": [{"name": "calc", "arguments": {"expr": "2+2"}}]},
-  {"id": "m3", "role": "tool_result", "content": "4", "tool_calls": null}
+  {"id": "m2", "role": "thinking", "content": "Simple math question", "tool_calls": null},
+  {"id": "m3", "role": "tool_use", "content": "", "tool_calls": [{"name": "calc", "arguments": {"expr": "2+2"}}]},
+  {"id": "m4", "role": "tool_result", "content": "4", "tool_calls": null}
 ]
 ```
+
+Note: Thinking blocks become separate messages (m2) instead of being merged into tool_use content.

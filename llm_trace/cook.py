@@ -15,7 +15,7 @@ class CookedMessage:
     """Deduplicated message with stable ID."""
 
     id: str
-    role: str  # "system" | "user" | "tool_use" | "tool_result" | "assistant"
+    role: str  # "system" | "user" | "tool_use" | "tool_result" | "assistant" | "thinking"
     content: str
     tool_calls: list[dict] | None = None
 
@@ -38,7 +38,7 @@ class CookedRequest:
     parent_id: str | None
     timestamp: int  # Unix milliseconds
     request_messages: list[str]  # Message IDs
-    response_message: str  # Message ID
+    response_messages: list[str]  # Message IDs
     model: str
     tools: list[str]  # Tool IDs
     duration_ms: int
@@ -477,13 +477,13 @@ class TraceCooker:
             return json.dumps(item, ensure_ascii=False)
         return str(item)
 
-    def _process_response_message(self, response: dict | None, error: str | None) -> str:
-        """Process response and return message ID."""
+    def _process_response_message(self, response: dict | None, error: str | None) -> list[str]:
+        """Process response and return list of message IDs."""
         if error:
-            return self._get_or_create_message("assistant", f"Error: {error}", None)
+            return [self._get_or_create_message("assistant", f"Error: {error}", None)]
 
         if not response:
-            return self._get_or_create_message("assistant", "", None)
+            return [self._get_or_create_message("assistant", "", None)]
 
         # Handle streaming response - parse SSE lines first
         if response.get("stream") and "sse_lines" in response:
@@ -492,14 +492,14 @@ class TraceCooker:
 
         choices = response.get("choices", [])
         if not choices:
-            return self._get_or_create_message("assistant", "", None)
+            return [self._get_or_create_message("assistant", "", None)]
 
         message = choices[0].get("message", {})
         role = message.get("role", "assistant")
         content = message.get("content", "")
         tool_calls = message.get("tool_calls")
 
-        return self._get_or_create_message(role, content, tool_calls)
+        return [self._get_or_create_message(role, content, tool_calls)]
 
     def _process_tools(self, tools: list[dict] | None) -> list[str]:
         """Process tool definitions and return list of tool IDs."""
@@ -565,21 +565,17 @@ class TraceCooker:
         """Process Claude content blocks and return message IDs.
 
         Each text block becomes a separate message (consistent with OpenAI handling).
-        Thinking blocks are prefixed to the next text block.
+        Thinking blocks become separate messages with role "thinking".
         Tool use blocks are collected into a single tool_use message.
         Tool result blocks become separate tool_result messages.
         """
         msg_ids = []
         tool_calls = []
-        pending_thinking = ""
 
         for block in blocks:
             if not isinstance(block, dict):
                 # Plain string - create message
                 content = str(block)
-                if pending_thinking:
-                    content = f"thinking:\n{pending_thinking}\n\n{content}"
-                    pending_thinking = ""
                 msg_id = self._get_or_create_message(role, content, None)
                 msg_ids.append(msg_id)
                 continue
@@ -589,15 +585,15 @@ class TraceCooker:
             if block_type == "text":
                 # Each text block becomes a separate message
                 content = block.get("text", "")
-                if pending_thinking:
-                    content = f"thinking:\n{pending_thinking}\n\n{content}"
-                    pending_thinking = ""
                 msg_id = self._get_or_create_message(role, content, None)
                 msg_ids.append(msg_id)
 
             elif block_type == "thinking":
-                # Buffer thinking to prepend to next text block
-                pending_thinking = block.get("thinking", "")
+                # Create separate thinking message
+                thinking_text = block.get("thinking", "")
+                if thinking_text:
+                    msg_id = self._get_or_create_message("thinking", thinking_text, None)
+                    msg_ids.append(msg_id)
 
             elif block_type == "tool_use":
                 # Collect tool calls
@@ -632,27 +628,18 @@ class TraceCooker:
 
         # Create tool_use message if there are tool calls
         if tool_calls:
-            # If there's pending thinking, include it
-            content = ""
-            if pending_thinking:
-                content = f"thinking:\n{pending_thinking}"
-                pending_thinking = ""
-            msg_id = self._get_or_create_message("tool_use", content, tool_calls)
-            msg_ids.append(msg_id)
-        elif pending_thinking:
-            # Orphan thinking block (no following text) - create standalone message
-            msg_id = self._get_or_create_message(role, f"thinking:\n{pending_thinking}", None)
+            msg_id = self._get_or_create_message("tool_use", "", tool_calls)
             msg_ids.append(msg_id)
 
         return msg_ids
 
-    def _process_claude_response(self, response: dict | None, error: str | None) -> str:
-        """Process Claude response and return message ID."""
+    def _process_claude_response(self, response: dict | None, error: str | None) -> list[str]:
+        """Process Claude response and return list of message IDs."""
         if error:
-            return self._get_or_create_message("assistant", f"Error: {error}", None)
+            return [self._get_or_create_message("assistant", f"Error: {error}", None)]
 
         if not response:
-            return self._get_or_create_message("assistant", "", None)
+            return [self._get_or_create_message("assistant", "", None)]
 
         # Handle streaming response - parse SSE lines first
         if response.get("stream") and "sse_lines" in response:
@@ -661,8 +648,9 @@ class TraceCooker:
 
         content = response.get("content", [])
         if not content:
-            return self._get_or_create_message("assistant", "", None)
+            return [self._get_or_create_message("assistant", "", None)]
 
+        msg_ids = []
         text_parts = []
         tool_calls = []
 
@@ -677,9 +665,11 @@ class TraceCooker:
                 text_parts.append(block.get("text", ""))
 
             elif block_type == "thinking":
+                # Create separate thinking message
                 thinking_text = block.get("thinking", "")
                 if thinking_text:
-                    text_parts.insert(0, f"thinking:\n{thinking_text}\n\n")
+                    msg_id = self._get_or_create_message("thinking", thinking_text, None)
+                    msg_ids.append(msg_id)
 
             elif block_type == "tool_use":
                 tool_calls.append(
@@ -689,10 +679,18 @@ class TraceCooker:
                     }
                 )
 
+        # Create assistant message for text/tool_calls
         combined_text = "".join(text_parts).strip()
-        return self._get_or_create_message(
-            "assistant", combined_text, tool_calls if tool_calls else None
-        )
+        if combined_text or tool_calls:
+            msg_id = self._get_or_create_message(
+                "assistant", combined_text, tool_calls if tool_calls else None
+            )
+            msg_ids.append(msg_id)
+        elif not msg_ids:
+            # No content at all - create empty assistant message
+            msg_ids.append(self._get_or_create_message("assistant", "", None))
+
+        return msg_ids
 
     def _process_claude_tools(self, tools: list[dict] | None) -> list[str]:
         """Process Claude tool definitions and return list of tool IDs."""
@@ -721,8 +719,8 @@ class TraceCooker:
         system = request.get("system")
         request_msg_ids = self._process_claude_request_messages(messages, system)
 
-        # Process response message
-        response_msg_id = self._process_claude_response(response, error)
+        # Process response messages
+        response_msg_ids = self._process_claude_response(response, error)
 
         # Process tools
         tools = request.get("tools", [])
@@ -739,7 +737,7 @@ class TraceCooker:
             parent_id=None,
             timestamp=timestamp,
             request_messages=request_msg_ids,
-            response_message=response_msg_id,
+            response_messages=response_msg_ids,
             model=model,
             tools=tool_ids,
             duration_ms=duration_ms,
@@ -766,8 +764,8 @@ class TraceCooker:
         messages = request.get("messages", [])
         request_msg_ids = self._process_request_messages(messages)
 
-        # Process response message
-        response_msg_id = self._process_response_message(response, error)
+        # Process response messages
+        response_msg_ids = self._process_response_message(response, error)
 
         # Process tools
         tools = request.get("tools", [])
@@ -784,7 +782,7 @@ class TraceCooker:
             parent_id=None,
             timestamp=timestamp,
             request_messages=request_msg_ids,
-            response_message=response_msg_id,
+            response_messages=response_msg_ids,
             model=model,
             tools=tool_ids,
             duration_ms=duration_ms,
@@ -863,12 +861,12 @@ class TraceCooker:
     def _build_expected_prefix(self, candidate: CookedRequest) -> list[str]:
         """Build expected message prefix.
 
-        If candidate has response_message, prefix = request_messages + [response_message]
+        If candidate has response_messages, prefix = request_messages + response_messages
         Otherwise just request_messages
         """
         prefix = list(candidate.request_messages)
-        if candidate.response_message is not None:
-            prefix.append(candidate.response_message)
+        if candidate.response_messages:
+            prefix.extend(candidate.response_messages)
         return prefix
 
     def _is_prefix(self, prefix: list[str], messages: list[str]) -> bool:

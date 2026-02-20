@@ -5,7 +5,7 @@ export interface ToolCall {
 
 export interface Message {
   id: string;
-  role: 'system' | 'user' | 'tool_use' | 'tool_result' | 'assistant';
+  role: 'system' | 'user' | 'tool_use' | 'tool_result' | 'assistant' | 'thinking';
   content: string;
   tool_calls?: ToolCall[];
 }
@@ -22,7 +22,7 @@ export interface Request {
   parent_id: string | null;
   timestamp: number;
   request_messages: string[];
-  response_message: string;
+  response_messages: string[];
   model: string;
   tools: string[];
   duration_ms: number;

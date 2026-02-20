@@ -31,7 +31,9 @@ export function RequestDetail({ request, getMessage, getTool, getRequest }: Requ
     .map(id => getMessage(id))
     .filter((m): m is Message => m !== undefined);
 
-  const responseMessage = getMessage(request.response_message);
+  const responseMessages = request.response_messages
+    .map(id => getMessage(id))
+    .filter((m): m is Message => m !== undefined);
 
   const tools = request.tools
     .map(id => getTool(id))
@@ -124,11 +126,16 @@ export function RequestDetail({ request, getMessage, getTool, getRequest }: Requ
           </h2>
         </div>
         <div className="p-6 bg-bg-secondary max-h-[30vh] overflow-y-auto">
-          {responseMessage ? (
-            <MessageCard
-              message={responseMessage}
-              isExpanded={true}
-            />
+          {responseMessages.length > 0 ? (
+            <div className="space-y-3">
+              {responseMessages.map((message) => (
+                <MessageCard
+                  key={message.id}
+                  message={message}
+                  isExpanded={true}
+                />
+              ))}
+            </div>
           ) : (
             <div className="text-center text-text-muted py-4">
               No response message

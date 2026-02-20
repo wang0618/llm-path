@@ -79,7 +79,11 @@ The `cook` command transforms raw JSONL traces into visualization-ready JSON:
 
 - **Message deduplication**: Same messages get reused across requests via hash-based IDs
 - **Tool deduplication**: Tool definitions are deduplicated by (name, description, parameters)
-- **Role mapping**: `assistant` with tool_calls → `tool_use`, `tool` → `tool_result`
+- **Role mapping**:
+  - `assistant` with tool_calls → `tool_use`
+  - `tool` → `tool_result`
+  - Claude thinking blocks → separate `thinking` messages
+- **Response messages**: Each request has `response_messages` (array) to support multiple response parts (e.g., thinking + assistant)
 - **Request dependency analysis**: Builds a dependency forest (not linear chain) by:
   - Using prefix matching and Levenshtein distance for parent detection
   - Filtering by model (no cross-model dependencies)

@@ -56,6 +56,12 @@ const roleConfig: Record<Message['role'], { label: string; colorClass: string; b
     bgClass: 'bg-role-tool-result/10 border-role-tool-result/30',
     bgSolidClass: 'bg-[color-mix(in_srgb,var(--color-role-tool-result)_10%,var(--color-bg-primary))]',
   },
+  thinking: {
+    label: 'thinking',
+    colorClass: 'text-role-thinking',
+    bgClass: 'bg-role-thinking/10 border-role-thinking/30',
+    bgSolidClass: 'bg-[color-mix(in_srgb,var(--color-role-thinking)_10%,var(--color-bg-primary))]',
+  },
 };
 
 export function MessageCard({ message, isExpanded = false, onToggleExpand }: MessageCardProps) {

@@ -21,6 +21,7 @@
   --color-role-assistant: #3fb950;
   --color-role-tool-use: #a371f7;
   --color-role-tool-result: #d29922;
+  --color-role-thinking: #f0883e;
 
   /* Semantic Colors */
   --color-success: #238636;
@@ -53,6 +54,7 @@
   --color-role-assistant: #1a7f37;
   --color-role-tool-use: #8250df;
   --color-role-tool-result: #9a6700;
+  --color-role-thinking: #d46a1f;
   --color-success: #1a7f37;
   --color-warning: #9a6700;
   --color-error: #cf222e;

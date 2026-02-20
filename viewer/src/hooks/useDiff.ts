@@ -28,10 +28,10 @@ export function useDiff({ currentRequest, parentRequest, getMessage }: UseDiffPa
       return computeFirstRequestDiff(currentMessageIds, getMessage);
     }
 
-    // Parent messages = parent's request messages + parent's response message
+    // Parent messages = parent's request messages + parent's response messages
     const parentMessageIds = [
       ...parentRequest.request_messages,
-      parentRequest.response_message,
+      ...parentRequest.response_messages,
     ];
 
     return computeMessageDiff(parentMessageIds, currentMessageIds, getMessage);
