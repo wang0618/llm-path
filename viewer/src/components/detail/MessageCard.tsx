@@ -7,11 +7,22 @@ interface MessageCardProps {
 }
 
 export const MESSAGE_MAX_LINES = 5;
+export const MESSAGE_MAX_CHARS = 500;
 const LINE_HEIGHT = 1.5; // matches leading-relaxed
 
 export function getMessageLineCount(message: Message): number {
   if (!message.content) return 0;
   return message.content.split('\n').length;
+}
+
+export function getMessageCharCount(message: Message): number {
+  if (!message.content) return 0;
+  return message.content.length;
+}
+
+export function shouldTruncateMessage(message: Message): boolean {
+  return getMessageLineCount(message) > MESSAGE_MAX_LINES ||
+         getMessageCharCount(message) > MESSAGE_MAX_CHARS;
 }
 
 const roleConfig: Record<Message['role'], { label: string; colorClass: string; bgClass: string; bgSolidClass: string }> = {
@@ -50,7 +61,7 @@ const roleConfig: Record<Message['role'], { label: string; colorClass: string; b
 export function MessageCard({ message, isExpanded = false, onToggleExpand }: MessageCardProps) {
   const config = roleConfig[message.role];
   const contentLineCount = getMessageLineCount(message);
-  const shouldTruncate = contentLineCount > MESSAGE_MAX_LINES;
+  const shouldTruncate = shouldTruncateMessage(message);
 
   return (
     <div className={`rounded-lg border ${config.bgClass}`}>
