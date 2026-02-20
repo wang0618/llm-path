@@ -272,8 +272,8 @@ class TraceCooker:
                 tool_ids.append(tool_id)
         return tool_ids
 
-    def process_record(self, record: dict, parent_id: str | None) -> str:
-        """Process a single trace record, returns its ID for chaining."""
+    def _process_record(self, record: dict) -> CookedRequest:
+        """Process a single trace record, returns CookedRequest (parent_id not set)."""
         request = record.get("request", {})
         response = record.get("response")
         error = record.get("error")
@@ -289,15 +289,15 @@ class TraceCooker:
         tools = request.get("tools", [])
         tool_ids = self._process_tools(tools)
 
-        # Create request record
+        # Create request record (parent_id will be set later)
         record_id = record.get("id", "")
         timestamp = _iso_to_unix_ms(record.get("timestamp", ""))
         model = request.get("model", "")
         duration_ms = record.get("duration_ms", 0)
 
-        cooked_request = CookedRequest(
+        return CookedRequest(
             id=record_id,
-            parent_id=parent_id,
+            parent_id=None,
             timestamp=timestamp,
             request_messages=request_msg_ids,
             response_message=response_msg_id,
@@ -305,21 +305,117 @@ class TraceCooker:
             tools=tool_ids,
             duration_ms=duration_ms,
         )
-        self.requests.append(cooked_request)
-
-        return record_id
 
     def cook(self, records: list[dict]) -> CookedOutput:
         """Process all records and return deduplicated output."""
-        parent_id = None
+        # Step 1: Process all records
         for record in records:
-            parent_id = self.process_record(record, parent_id)
+            cooked_request = self._process_record(record)
+            self.requests.append(cooked_request)
+
+        # Step 2: Sort by timestamp
+        self.requests.sort(key=lambda r: r.timestamp)
+
+        # Step 3: Analyze dependencies
+        self._analyze_dependencies()
 
         return CookedOutput(
             messages=self.messages,
             tools=self.tools,
             requests=self.requests,
         )
+
+    def _analyze_dependencies(self) -> None:
+        """Analyze request dependencies and set parent_id for each request."""
+        for idx, req in enumerate(self.requests):
+            if idx == 0:
+                req.parent_id = None
+            else:
+                req.parent_id = self._find_parent(req, self.requests[:idx])
+
+    def _find_parent(self, curr: CookedRequest, candidates: list[CookedRequest]) -> str | None:
+        """Find the best parent for current request.
+
+        Args:
+            curr: Current request
+            candidates: Requests earlier than curr (sorted by timestamp ascending)
+
+        Returns:
+            parent_id or None
+        """
+        # Optimization: check prefix relationship first (from most recent)
+        for c in reversed(candidates):
+            expected_prefix = self._build_expected_prefix(c)
+            if self._is_prefix(expected_prefix, curr.request_messages):
+                return c.id
+
+        # Fallback: use edit distance to find most similar parent
+        best_score = float("-inf")
+        best_parent_id = None
+
+        for c in reversed(candidates):  # From most recent, same score picks latest
+            score = self._match_score(curr, c)
+            if score > best_score:
+                best_score = score
+                best_parent_id = c.id
+
+        return best_parent_id
+
+    def _build_expected_prefix(self, candidate: CookedRequest) -> list[str]:
+        """Build expected message prefix.
+
+        If candidate has response_message, prefix = request_messages + [response_message]
+        Otherwise just request_messages
+        """
+        prefix = list(candidate.request_messages)
+        if candidate.response_message is not None:
+            prefix.append(candidate.response_message)
+        return prefix
+
+    def _is_prefix(self, prefix: list[str], messages: list[str]) -> bool:
+        """Check if prefix is a prefix of messages."""
+        if len(prefix) > len(messages):
+            return False
+        return messages[: len(prefix)] == prefix
+
+    def _match_score(self, curr: CookedRequest, candidate: CookedRequest) -> float:
+        """Compute match score using negative edit distance (higher is more similar).
+
+        Calculates edit operations needed to transform A to B, returns negative.
+        A: candidate.request_messages + [candidate.response_message] (if exists)
+        B: curr.request_messages
+        """
+        a = self._build_expected_prefix(candidate)
+        b = curr.request_messages
+
+        edit_distance = self._levenshtein(a, b)
+        return -edit_distance
+
+    def _levenshtein(self, a: list[str], b: list[str]) -> int:
+        """Compute Levenshtein distance between two lists.
+
+        Operations: add, delete, replace
+        """
+        m, n = len(a), len(b)
+        dp = [[0] * (n + 1) for _ in range(m + 1)]
+
+        for i in range(m + 1):
+            dp[i][0] = i
+        for j in range(n + 1):
+            dp[0][j] = j
+
+        for i in range(1, m + 1):
+            for j in range(1, n + 1):
+                if a[i - 1] == b[j - 1]:
+                    dp[i][j] = dp[i - 1][j - 1]
+                else:
+                    dp[i][j] = 1 + min(
+                        dp[i - 1][j],  # delete
+                        dp[i][j - 1],  # add
+                        dp[i - 1][j - 1],  # replace
+                    )
+
+        return dp[m][n]
 
 
 def cook_traces(input_path: str, output_path: str) -> None:
