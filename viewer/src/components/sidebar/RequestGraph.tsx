@@ -1,5 +1,5 @@
 import { useMemo, type ReactElement } from 'react';
-import type { Request } from '../../types';
+import type { Request, Message } from '../../types';
 import { buildRequestTree, type RequestTreeNode } from '../../utils/treeLayout';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -181,19 +181,27 @@ function ConnectorLayer({ flat, laneSpans, totalRows, svgWidth }: ConnectorProps
 
 // ─── Formatting Helpers ───────────────────────────────────────────────────────
 
-function formatTime(timestamp: number): string {
-  const date = new Date(timestamp);
-  return date.toLocaleTimeString('en-US', {
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-}
-
 function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   return `${(ms / 1000).toFixed(1)}s`;
+}
+
+function getMessageSummary(message: Message | undefined): string {
+  if (!message) return '-';
+  const content = message.content || '';
+  if (!content) return '-';
+  return content.slice(0, 200);
+}
+
+function formatRole(role: string): string {
+  switch (role) {
+    case 'user': return 'user';
+    case 'assistant': return 'assistant';
+    case 'system': return 'system';
+    case 'tool_use': return 'tool_use';
+    case 'tool_result': return 'tool_result';
+    default: return role;
+  }
 }
 
 // ─── Single Row ───────────────────────────────────────────────────────────────
@@ -203,12 +211,19 @@ interface GraphRowProps {
   svgWidth: number;
   isSelected: boolean;
   onClick: () => void;
+  getMessage: (id: string) => Message | undefined;
 }
 
-function GraphRow({ node, svgWidth, isSelected, onClick }: GraphRowProps) {
+function GraphRow({ node, svgWidth, isSelected, onClick, getMessage }: GraphRowProps) {
   const cx = colX(node.column);
   const cy = ROW_HEIGHT / 2;
   const { request } = node;
+
+  // Get the last message from request_messages
+  const lastMessageId = request.request_messages[request.request_messages.length - 1];
+  const lastMessage = lastMessageId ? getMessage(lastMessageId) : undefined;
+  const summary = getMessageSummary(lastMessage);
+  const messageType = lastMessage ? formatRole(lastMessage.role) : '-';
 
   return (
     <button
@@ -279,21 +294,24 @@ function GraphRow({ node, svgWidth, isSelected, onClick }: GraphRowProps) {
           gap: 2,
         }}
       >
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-text-secondary text-sm font-mono truncate">
-            {formatTime(request.timestamp)}
-          </span>
+        {/* Line 1: Summary */}
+        <span className="text-text-secondary text-sm truncate max-w-48">
+          {summary}
+        </span>
+        {/* Line 2: Type, Model, Duration */}
+        <div className="flex items-center gap-2 text-xs text-text-muted">
+          <span className="shrink-0">{messageType}</span>
+          <span className="text-text-muted/50">|</span>
+          <span className="truncate">{request.model}</span>
+          <span className="text-text-muted/50">|</span>
           <span
-            className={`text-xs font-mono px-1.5 py-0.5 rounded shrink-0 ${
-              request.duration_ms > 5000
-                ? 'bg-warning/20 text-warning'
-                : 'bg-bg-primary text-text-muted'
+            className={`shrink-0 ${
+              request.duration_ms > 5000 ? 'text-warning' : ''
             }`}
           >
             {formatDuration(request.duration_ms)}
           </span>
         </div>
-        <span className="text-xs text-text-muted truncate">{request.model}</span>
       </div>
     </button>
   );
@@ -305,9 +323,10 @@ interface RequestGraphProps {
   requests: Request[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  getMessage: (id: string) => Message | undefined;
 }
 
-export function RequestGraph({ requests, selectedId, onSelect }: RequestGraphProps) {
+export function RequestGraph({ requests, selectedId, onSelect, getMessage }: RequestGraphProps) {
   const tree = useMemo(() => buildRequestTree(requests), [requests]);
   const flat = useMemo(() => buildFlatNodes(tree), [tree]);
   const laneSpans = useMemo(() => buildLaneSpans(flat), [flat]);
@@ -328,6 +347,7 @@ export function RequestGraph({ requests, selectedId, onSelect }: RequestGraphPro
           svgWidth={svgWidth}
           isSelected={selectedId === node.id}
           onClick={() => onSelect(node.id)}
+          getMessage={getMessage}
         />
       ))}
     </div>

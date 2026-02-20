@@ -64,6 +64,7 @@ function App() {
           requests={data.requests}
           selectedId={selectedRequestId}
           onSelect={setSelectedRequestId}
+          getMessage={getMessage}
         />
       }
       main={

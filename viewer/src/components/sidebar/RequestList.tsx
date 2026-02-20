@@ -1,13 +1,14 @@
-import type { Request } from '../../types';
+import type { Request, Message } from '../../types';
 import { RequestGraph } from './RequestGraph';
 
 interface RequestListProps {
   requests: Request[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  getMessage: (id: string) => Message | undefined;
 }
 
-export function RequestList({ requests, selectedId, onSelect }: RequestListProps) {
+export function RequestList({ requests, selectedId, onSelect, getMessage }: RequestListProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -31,6 +32,7 @@ export function RequestList({ requests, selectedId, onSelect }: RequestListProps
             requests={requests}
             selectedId={selectedId}
             onSelect={onSelect}
+            getMessage={getMessage}
           />
         )}
       </div>
