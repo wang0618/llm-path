@@ -56,6 +56,8 @@ function buildFlatNodes(roots: RequestTreeNode[]): FlatNode[] {
     const col = i === 0 ? 0 : counter.value++;
     assignCols(root, col, i > 0, counter, null, out);
   });
+  // Sort by timestamp for strict chronological order
+  out.sort((a, b) => a.request.timestamp - b.request.timestamp);
   return out;
 }
 
