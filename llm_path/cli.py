@@ -1,4 +1,4 @@
-"""Command-line interface for LLM Trace."""
+"""Command-line interface for LLM Path."""
 
 import argparse
 import logging
@@ -16,7 +16,7 @@ def run_proxy(args: argparse.Namespace) -> None:
     storage = JSONLStorage(args.output)
     app = create_app(args.target, storage)
 
-    print("Starting LLM Trace proxy server...")
+    print("Starting LLM Path proxy server...")
     print(f"  Listening on: http://{args.host}:{args.port}")
     print(f"  Target API:   {args.target}")
     print(f"  Output file:  {args.output}")
@@ -40,7 +40,7 @@ def main():
     )
 
     parser = argparse.ArgumentParser(
-        description="LLM Trace - Proxy server for tracing LLM requests"
+        description="LLM Path - Proxy server for tracing LLM requests"
     )
     subparsers = parser.add_subparsers(dest="command")
 

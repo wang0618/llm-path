@@ -97,7 +97,7 @@ function App() {
           <p className="text-text-muted text-xs">
             Make sure <code className="bg-bg-tertiary px-1.5 py-0.5 rounded">/public/data.json</code> exists.
             <br />
-            Run: <code className="bg-bg-tertiary px-1.5 py-0.5 rounded">uv run llm-trace cook ./traces/trace.jsonl -o ./viewer/public/data.json</code>
+            Run: <code className="bg-bg-tertiary px-1.5 py-0.5 rounded">uv run llm-path cook ./traces/trace.jsonl -o ./viewer/public/data.json</code>
           </p>
         </div>
       </div>

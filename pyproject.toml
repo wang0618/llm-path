@@ -1,5 +1,5 @@
 [project]
-name = "llm-trace"
+name = "llm-path"
 version = "0.1.0"
 description = "A tool for tracing LLM requests"
 readme = "README.md"
@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-llm-trace = "llm_trace.cli:main"
+llm-path = "llm_path.cli:main"
 
 [project.optional-dependencies]
 dev = [

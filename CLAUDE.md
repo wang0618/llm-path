@@ -1,4 +1,4 @@
-# LLM Trace
+# LLM Path
 
 A tool for tracing LLM requests - intercepts API calls and saves them for debugging and analysis.
 
@@ -6,17 +6,17 @@ A tool for tracing LLM requests - intercepts API calls and saves them for debugg
 
 ```bash
 # Start proxy server
-uv run llm-trace proxy --port 8080 --output ./traces/trace.jsonl
+uv run llm-path proxy --port 8080 --output ./traces/trace.jsonl
 
 # Preprocess traces for visualization
-uv run llm-trace cook ./traces/trace.jsonl -o ./viewer/public/data.json
+uv run llm-path cook ./traces/trace.jsonl -o ./viewer/public/data.json
 
 # Install Python dependencies
 uv sync
 
 # Lint/format Python
-uv run ruff check llm_trace/
-uv run ruff format llm_trace/
+uv run ruff check llm_path/
+uv run ruff format llm_path/
 
 # Run viewer (React)
 cd viewer && npm install && npm run dev
@@ -28,8 +28,8 @@ open http://localhost:port/?data=path/to/other.json
 ## Directory Structure
 
 ```
-llm-trace/
-├── llm_trace/           # Main package
+llm-path/
+├── llm_path/           # Main package
 │   ├── cli.py           # CLI entry point (subcommands: proxy, cook)
 │   ├── cook.py          # Trace preprocessing for visualization
 │   ├── proxy.py         # Proxy server (Starlette + httpx)

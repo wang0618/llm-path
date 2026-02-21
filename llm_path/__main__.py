@@ -1,4 +1,4 @@
-"""Allow running as python -m llm_trace."""
+"""Allow running as python -m llm_path."""
 
 from .cli import main
 

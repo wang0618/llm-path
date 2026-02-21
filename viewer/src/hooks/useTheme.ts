@@ -9,7 +9,7 @@ interface ThemeContextValue {
 
 export const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-const STORAGE_KEY = 'llm-trace-theme';
+const STORAGE_KEY = 'llm-path-theme';
 
 function getInitialTheme(): Theme {
   const stored = localStorage.getItem(STORAGE_KEY);

@@ -65,7 +65,7 @@ export function RequestHeader({ request }: RequestHeaderProps) {
         <div className="ml-auto flex items-center gap-2">
           <ThemeToggle />
           <a
-            href="https://github.com/wang0618/llm-trace"
+            href="https://github.com/wang0618/llm-path"
             target="_blank"
             rel="noopener noreferrer"
             className="p-2 rounded-md text-text-secondary hover:text-text-primary hover:bg-bg-tertiary transition-colors"

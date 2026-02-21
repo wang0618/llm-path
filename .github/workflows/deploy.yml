@@ -36,7 +36,7 @@ jobs:
         run: |
           for file in sample-data/*.jsonl; do
             filename=$(basename "$file" .jsonl)
-            uv run llm-trace cook "$file" -o "viewer/public/${filename}.json"
+            uv run llm-path cook "$file" -o "viewer/public/${filename}.json"
           done
 
       - name: Setup Node.js
