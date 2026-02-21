@@ -22,7 +22,7 @@ export function getMessageCharCount(message: Message): number {
 
 export function shouldTruncateMessage(message: Message): boolean {
   return getMessageLineCount(message) > MESSAGE_MAX_LINES ||
-         getMessageCharCount(message) > MESSAGE_MAX_CHARS;
+    getMessageCharCount(message) > MESSAGE_MAX_CHARS;
 }
 
 const roleConfig: Record<Message['role'], { label: string; colorClass: string; bgClass: string; bgSolidClass: string }> = {
@@ -76,6 +76,12 @@ export function MessageCard({ message, isExpanded = false, onToggleExpand }: Mes
         <span className={`text-xs font-mono font-medium uppercase ${config.colorClass}`}>
           {config.label}
         </span>
+        {/* Show tool_use_id for tool_result messages */}
+        {message.tool_use_id && (
+          <code className="px-1.5 py-0.5 text-xs font-mono text-text-muted rounded">
+            {message.tool_use_id}
+          </code>
+        )}
       </div>
 
       {/* Content */}
@@ -83,16 +89,15 @@ export function MessageCard({ message, isExpanded = false, onToggleExpand }: Mes
         {message.content && (
           <div className="relative">
             <div
-              className={`text-sm text-text-primary whitespace-pre-wrap break-words leading-relaxed ${
-                shouldTruncate && !isExpanded ? 'overflow-hidden' : ''
-              }`}
+              className={`text-sm text-text-primary whitespace-pre-wrap break-words leading-relaxed ${shouldTruncate && !isExpanded ? 'overflow-hidden' : ''
+                }`}
               style={
                 shouldTruncate && !isExpanded
                   ? {
-                      maxHeight: `${MESSAGE_MAX_LINES * LINE_HEIGHT}em`,
-                      maskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)',
-                      WebkitMaskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)',
-                    }
+                    maxHeight: `${MESSAGE_MAX_LINES * LINE_HEIGHT}em`,
+                    maskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)',
+                    WebkitMaskImage: 'linear-gradient(to bottom, black 80%, transparent 100%)',
+                  }
                   : undefined
               }
             >
@@ -117,10 +122,15 @@ export function MessageCard({ message, isExpanded = false, onToggleExpand }: Mes
                 key={idx}
                 className="rounded bg-bg-primary/50 border border-border-muted overflow-hidden"
               >
-                <div className="px-3 py-1.5 bg-bg-tertiary border-b border-border-muted">
+                <div className="px-3 py-1.5 bg-bg-tertiary border-b border-border-muted flex items-center gap-2">
                   <span className="font-mono text-xs text-role-tool-use font-medium">
                     {call.name}
                   </span>
+                  {call.id && (
+                    <code className="px-1.5 py-0.5 text-xs font-mono text-text-muted rounded">
+                      {call.id}
+                    </code>
+                  )}
                 </div>
                 <pre className="px-3 py-2 text-xs font-mono text-text-secondary overflow-x-auto">
                   {JSON.stringify(call.arguments, null, 2)}

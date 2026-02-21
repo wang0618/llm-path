@@ -1,6 +1,7 @@
 export interface ToolCall {
   name: string;
   arguments: Record<string, unknown>;
+  id?: string;  // Tool use ID (e.g., "call_xxx")
 }
 
 export interface Message {
@@ -8,6 +9,7 @@ export interface Message {
   role: 'system' | 'user' | 'tool_use' | 'tool_result' | 'assistant' | 'thinking';
   content: string;
   tool_calls?: ToolCall[];
+  tool_use_id?: string;  // For tool_result: references the tool_use it responds to
 }
 
 export interface Tool {

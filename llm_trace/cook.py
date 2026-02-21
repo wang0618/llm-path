@@ -17,7 +17,8 @@ class CookedMessage:
     id: str
     role: str  # "system" | "user" | "tool_use" | "tool_result" | "assistant" | "thinking"
     content: str
-    tool_calls: list[dict] | None = None
+    tool_calls: list[dict] | None = None  # Each has: name, arguments, id (optional)
+    tool_use_id: str | None = None  # For tool_result: references the tool_use it responds to
 
 
 @dataclass
@@ -61,12 +62,15 @@ class CookedOutput:
         }
 
 
-def _compute_message_hash(role: str, content: str, tool_calls: list[dict] | None) -> str:
+def _compute_message_hash(
+    role: str, content: str, tool_calls: list[dict] | None, tool_use_id: str | None = None
+) -> str:
     """Compute stable hash for message deduplication."""
     data = {
         "role": role,
         "content": content,
         "tool_calls": tool_calls,
+        "tool_use_id": tool_use_id,
     }
     json_str = json.dumps(data, sort_keys=True, ensure_ascii=False)
     return hashlib.sha256(json_str.encode()).hexdigest()[:16]
@@ -218,6 +222,7 @@ def _parse_claude_sse(sse_lines: list[str]) -> dict:
                 "text": block.get("text", ""),
                 "name": block.get("name", ""),
                 "input": "",  # Will be accumulated
+                "id": block.get("id"),  # tool_use ID
             }
 
         elif event_type == "content_block_delta":
@@ -256,13 +261,14 @@ def _parse_claude_sse(sse_lines: list[str]) -> dict:
                     input_data = json.loads(block["input"])
                 except json.JSONDecodeError:
                     input_data = {"raw": block["input"]}
-            content.append(
-                {
-                    "type": "tool_use",
-                    "name": block["name"],
-                    "input": input_data,
-                }
-            )
+            tool_use_block = {
+                "type": "tool_use",
+                "name": block["name"],
+                "input": input_data,
+            }
+            if block.get("id"):
+                tool_use_block["id"] = block["id"]
+            content.append(tool_use_block)
 
     return {
         "id": response_id,
@@ -297,7 +303,7 @@ def _is_claude_sse(sse_lines: list[str]) -> bool:
 
 
 def _parse_tool_calls(tool_calls: list[dict] | None) -> list[dict] | None:
-    """Parse tool_calls, flattening to {name, arguments} format for frontend."""
+    """Parse tool_calls, flattening to {name, arguments, id} format for frontend."""
     if not tool_calls:
         return None
 
@@ -316,9 +322,14 @@ def _parse_tool_calls(tool_calls: list[dict] | None) -> list[dict] | None:
                 except json.JSONDecodeError:
                     arguments = {"raw": arguments}  # Keep as raw if not valid JSON
 
-            parsed.append({"name": name, "arguments": arguments})
+            call = {"name": name, "arguments": arguments}
+            # Preserve tool call ID from OpenAI format
+            if "id" in tc:
+                call["id"] = tc["id"]
+            parsed.append(call)
         else:
-            # Already flat format or unknown structure
+            # Already flat format (Claude) or unknown structure
+            # Preserve existing id if present
             parsed.append(tc)
     return parsed
 
@@ -381,13 +392,19 @@ class TraceCooker:
         self._message_counter = 0
         self._tool_counter = 0
 
-    def _get_or_create_message(self, role: str, content: str, tool_calls: list[dict] | None) -> str:
+    def _get_or_create_message(
+        self,
+        role: str,
+        content: str,
+        tool_calls: list[dict] | None,
+        tool_use_id: str | None = None,
+    ) -> str:
         """Get existing message ID or create new message, returns ID."""
         mapped_role = _map_role(role, tool_calls)
         parsed_tool_calls = _parse_tool_calls(tool_calls)
         content = content or ""
 
-        msg_hash = _compute_message_hash(mapped_role, content, parsed_tool_calls)
+        msg_hash = _compute_message_hash(mapped_role, content, parsed_tool_calls, tool_use_id)
 
         if msg_hash in self.message_hash_to_id:
             return self.message_hash_to_id[msg_hash]
@@ -400,6 +417,7 @@ class TraceCooker:
             role=mapped_role,
             content=content,
             tool_calls=parsed_tool_calls,
+            tool_use_id=tool_use_id,
         )
         self.messages.append(msg)
         self.message_hash_to_id[msg_hash] = msg_id
@@ -596,13 +614,14 @@ class TraceCooker:
                     msg_ids.append(msg_id)
 
             elif block_type == "tool_use":
-                # Collect tool calls
-                tool_calls.append(
-                    {
-                        "name": block.get("name", ""),
-                        "arguments": block.get("input", {}),
-                    }
-                )
+                # Collect tool calls with their IDs
+                tool_call = {
+                    "name": block.get("name", ""),
+                    "arguments": block.get("input", {}),
+                }
+                if "id" in block:
+                    tool_call["id"] = block["id"]
+                tool_calls.append(tool_call)
 
             elif block_type == "tool_result":
                 # Create separate message with tool_result role
@@ -613,7 +632,11 @@ class TraceCooker:
                         b.get("text", str(b)) if isinstance(b, dict) else str(b)
                         for b in result_content
                     )
-                msg_id = self._get_or_create_message("tool_result", str(result_content), None)
+                # Extract tool_use_id reference
+                tool_use_id = block.get("tool_use_id")
+                msg_id = self._get_or_create_message(
+                    "tool_result", str(result_content), None, tool_use_id=tool_use_id
+                )
                 msg_ids.append(msg_id)
 
             elif block_type == "image":
@@ -672,12 +695,13 @@ class TraceCooker:
                     msg_ids.append(msg_id)
 
             elif block_type == "tool_use":
-                tool_calls.append(
-                    {
-                        "name": block.get("name", ""),
-                        "arguments": block.get("input", {}),
-                    }
-                )
+                tool_call = {
+                    "name": block.get("name", ""),
+                    "arguments": block.get("input", {}),
+                }
+                if "id" in block:
+                    tool_call["id"] = block["id"]
+                tool_calls.append(tool_call)
 
         # Create assistant message for text/tool_calls
         combined_text = "".join(text_parts).strip()
