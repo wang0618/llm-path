@@ -144,7 +144,9 @@ function buildLaneSpans(flat: FlatNode[]): Map<number, LaneSpan> {
       const parentRowIdx = rowById.get(node.parentId) ?? rowIdx;
       const parentNode = flat[parentRowIdx];
       const dx = Math.abs(colX(node.column) - colX(parentNode.column));
-      openY = rowY(parentRowIdx) + curveHeight(dx);
+      const preferredOpenY = rowY(parentRowIdx) + curveHeight(dx);
+      // Ensure lane doesn't start past the node position
+      openY = Math.min(preferredOpenY, nodeY);
     } else {
       openY = span ? Math.min(span.openY, nodeY) : nodeY;
     }
@@ -187,7 +189,7 @@ function ConnectorLayer({ flat, laneSpans, totalRows, svgWidth }: ConnectorProps
   });
 
   // S-curve connectors for branches
-  flat.forEach((node) => {
+  flat.forEach((node, nodeIdx) => {
     if (!node.isNewBranch || !node.parentId) return;
     const parentRow = rowById.get(node.parentId);
     if (parentRow === undefined) return;
@@ -196,10 +198,12 @@ function ConnectorLayer({ flat, laneSpans, totalRows, svgWidth }: ConnectorProps
     const px = colX(parentNode.column);
     const py = rowY(parentRow);
     const cx = colX(node.column);
+    const nodeY = rowY(nodeIdx); // Child node's actual Y position
     const dx = Math.abs(cx - px);
-    const curveH = curveHeight(dx);
-    const endY = py + curveH;
-    const midY = py + curveH / 2;
+    const preferredEndY = py + curveHeight(dx);
+    // Ensure curve doesn't extend past the child node
+    const endY = Math.min(preferredEndY, nodeY);
+    const midY = py + (endY - py) / 2;
     const d = `M ${px} ${py} C ${px} ${midY} ${cx} ${midY} ${cx} ${endY}`;
     elems.push(
       <path
