@@ -464,6 +464,8 @@ class TraceCooker:
             role = msg.get("role", "")
             content = msg.get("content", "")
             tool_calls = msg.get("tool_calls")
+            # OpenAI format: tool role has tool_call_id to reference the tool call
+            tool_call_id = msg.get("tool_call_id")
 
             # Handle content as array - expand into multiple messages
             if isinstance(content, list):
@@ -476,7 +478,9 @@ class TraceCooker:
                     msg_id = self._get_or_create_message(role, "", tool_calls)
                     msg_ids.append(msg_id)
             else:
-                msg_id = self._get_or_create_message(role, content, tool_calls)
+                msg_id = self._get_or_create_message(
+                    role, content, tool_calls, tool_use_id=tool_call_id
+                )
                 msg_ids.append(msg_id)
         return msg_ids
 
@@ -527,16 +531,9 @@ class TraceCooker:
         content = message.get("content", "")
         tool_calls = message.get("tool_calls")
 
-        # Split content and tool_calls into separate messages (consistent with request handling)
-        msg_ids = []
-        if content:
-            msg_ids.append(self._get_or_create_message(role, content, None))
-        if tool_calls:
-            msg_ids.append(self._get_or_create_message(role, "", tool_calls))
-        # If neither content nor tool_calls, create empty assistant message
-        if not msg_ids:
-            msg_ids.append(self._get_or_create_message(role, "", None))
-        return msg_ids
+        # Create a single message with both content and tool_calls
+        msg_id = self._get_or_create_message(role, content or "", tool_calls)
+        return [msg_id]
 
     def _process_tools(self, tools: list[dict] | None) -> list[str]:
         """Process tool definitions and return list of tool IDs."""
