@@ -255,9 +255,8 @@ function GraphRow({ node, svgWidth, isSelected, onClick, getMessage }: GraphRowP
   return (
     <button
       onClick={onClick}
-      className={`graph-row w-full text-left transition-all duration-fast ${
-        isSelected ? 'graph-row-selected bg-bg-tertiary' : ''
-      }`}
+      className={`graph-row w-full text-left transition-all duration-fast ${isSelected ? 'graph-row-selected bg-bg-tertiary' : ''
+        }`}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -312,17 +311,17 @@ function GraphRow({ node, svgWidth, isSelected, onClick, getMessage }: GraphRowP
 
       {/* Request info */}
       <div
+        className="flex-1 min-w-0"
         style={{
           display: 'flex',
           flexDirection: 'column',
           paddingLeft: 8,
           paddingRight: 12,
-          minWidth: 160,
           gap: 2,
         }}
       >
         {/* Line 1: Summary */}
-        <span className="text-text-secondary text-sm truncate max-w-48">
+        <span className="text-text-secondary text-sm truncate">
           {summary}
         </span>
         {/* Line 2: Type, Model, Duration */}
@@ -330,11 +329,9 @@ function GraphRow({ node, svgWidth, isSelected, onClick, getMessage }: GraphRowP
           <span className="shrink-0">{messageType}</span>
           <span className="text-text-muted/50">|</span>
           <span className="truncate">{request.model}</span>
-          <span className="text-text-muted/50">|</span>
           <span
-            className={`shrink-0 ${
-              request.duration_ms > 5000 ? 'text-warning' : ''
-            }`}
+            className={`shrink-0 ml-auto ${request.duration_ms > 5000 ? 'text-warning' : ''
+              }`}
           >
             {formatDuration(request.duration_ms)}
           </span>
