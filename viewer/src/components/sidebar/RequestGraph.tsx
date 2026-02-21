@@ -15,6 +15,7 @@ interface FlatNode {
   id: string;
   request: Request;
   column: number;
+  branchId: number;
   parentId: string | null;
   isNewBranch: boolean;
   isIsolated: boolean; // Single-node tree (no parent, no children)
@@ -37,9 +38,9 @@ function getSubtreeSize(node: RequestTreeNode): number {
   return size;
 }
 
-function assignCols(
+function assignBranchIds(
   node: RequestTreeNode,
-  col: number,
+  branchId: number,
   isNewBranch: boolean,
   counter: { value: number },
   parentId: string | null,
@@ -48,24 +49,25 @@ function assignCols(
   out.push({
     id: node.request.id,
     request: node.request,
-    column: col,
+    column: -1, // To be assigned later
+    branchId,
     parentId,
     isNewBranch,
     isIsolated: false, // Part of a multi-node tree
   });
 
   if (node.children.length > 0) {
-    // Sort children by subtree size (descending) - largest subtree keeps original column
+    // Sort children by subtree size (descending) - largest subtree keeps original branch
     const sortedChildren = [...node.children].sort(
       (a, b) => getSubtreeSize(b) - getSubtreeSize(a),
     );
 
     sortedChildren.forEach((child, i) => {
       if (i === 0) {
-        assignCols(child, col, false, counter, node.request.id, out);
+        assignBranchIds(child, branchId, false, counter, node.request.id, out);
       } else {
-        const newCol = counter.value++;
-        assignCols(child, newCol, true, counter, node.request.id, out);
+        const newBranchId = counter.value++;
+        assignBranchIds(child, newBranchId, true, counter, node.request.id, out);
       }
     });
   }
@@ -87,24 +89,72 @@ function buildFlatNodes(roots: RequestTreeNode[]): FlatNode[] {
       id: root.request.id,
       request: root.request,
       column: 0,
+      branchId: -1,
       parentId: null,
       isNewBranch: false,
       isIsolated: true, // No connections for isolated nodes
     });
   }
 
-  // Multi-node trees get their own columns
-  // Start from column 1 if there are single-node trees, otherwise from column 0
-  const startCol = singleNodeRoots.length > 0 ? 1 : 0;
-  const counter = { value: startCol + 1 };
+  // Multi-node trees get assigned branchIds
+  // Start from branchId 1 if there are single-node trees, otherwise from branchId 0
+  const startBranchId = singleNodeRoots.length > 0 ? 1 : 0;
+  const counter = { value: startBranchId + 1 };
 
   multiNodeRoots.forEach((root, i) => {
-    const col = i === 0 ? startCol : counter.value++;
-    assignCols(root, col, i > 0, counter, null, out);
+    const branchId = i === 0 ? startBranchId : counter.value++;
+    assignBranchIds(root, branchId, i > 0, counter, null, out);
   });
 
   // Sort by timestamp for strict chronological order
   out.sort((a, b) => a.request.timestamp - b.request.timestamp);
+
+  const rowById = new Map<string, number>(out.map((n, i) => [n.id, i]));
+  
+  // Greedy Column Allocation
+  const branches = new Map<number, { startRow: number; endRow: number; nodes: FlatNode[] }>();
+  
+  out.forEach((node, rowIdx) => {
+    if (node.isIsolated) return;
+    
+    if (!branches.has(node.branchId)) {
+      let startRow = rowIdx;
+      if (node.isNewBranch && node.parentId !== null) {
+        const parentRow = rowById.get(node.parentId);
+        if (parentRow !== undefined) {
+          startRow = parentRow; // Branch visually starts at parent row
+        }
+      }
+      branches.set(node.branchId, { startRow, endRow: rowIdx, nodes: [] });
+    }
+    const b = branches.get(node.branchId)!;
+    b.endRow = Math.max(b.endRow, rowIdx);
+    b.nodes.push(node);
+  });
+  
+  const sortedBranchIds = Array.from(branches.keys()).sort((a, b) => a - b);
+  const minCol = singleNodeRoots.length > 0 ? 1 : 0;
+  const colSpans = new Map<number, {start: number, end: number}[]>();
+  
+  for (const branchId of sortedBranchIds) {
+    const b = branches.get(branchId)!;
+    
+    let col = minCol;
+    while (true) {
+      const spans = colSpans.get(col) || [];
+      const overlap = spans.some(s => Math.max(b.startRow, s.start) <= Math.min(b.endRow, s.end));
+      if (!overlap) break;
+      col++;
+    }
+    
+    b.nodes.forEach(node => node.column = col);
+    
+    if (!colSpans.has(col)) {
+      colSpans.set(col, []);
+    }
+    colSpans.get(col)!.push({start: b.startRow, end: b.endRow});
+  }
+
   return out;
 }
 
@@ -113,6 +163,7 @@ function buildFlatNodes(roots: RequestTreeNode[]): FlatNode[] {
 interface LaneSpan {
   openY: number;
   endY: number;
+  column: number;
 }
 
 function curveHeight(dx: number) {
@@ -135,7 +186,7 @@ function buildLaneSpans(flat: FlatNode[]): Map<number, LaneSpan> {
     // Skip isolated nodes - they don't contribute to lane spans
     if (node.isIsolated) return;
 
-    const span = spans.get(node.column);
+    const span = spans.get(node.branchId);
     const nodeY = rowY(rowIdx);
     const endY = span ? Math.max(span.endY, nodeY) : nodeY;
 
@@ -151,7 +202,7 @@ function buildLaneSpans(flat: FlatNode[]): Map<number, LaneSpan> {
       openY = span ? Math.min(span.openY, nodeY) : nodeY;
     }
 
-    spans.set(node.column, { openY, endY });
+    spans.set(node.branchId, { openY, endY, column: node.column });
   });
 
   return spans;
@@ -171,12 +222,12 @@ function ConnectorLayer({ flat, laneSpans, totalRows, svgWidth }: ConnectorProps
   const rowById = new Map<string, number>(flat.map((n, i) => [n.id, i]));
 
   // Vertical lane lines
-  laneSpans.forEach((span, col) => {
-    const x = colX(col);
+  laneSpans.forEach((span, branchId) => {
+    const x = colX(span.column);
     if (span.endY > span.openY) {
       elems.push(
         <line
-          key={`lane-${col}`}
+          key={`lane-${branchId}`}
           x1={x}
           y1={span.openY}
           x2={x}
