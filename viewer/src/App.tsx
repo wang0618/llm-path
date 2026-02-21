@@ -88,17 +88,24 @@ function App() {
   }
 
   if (error) {
+    const params = new URLSearchParams(window.location.search);
+    const localPath = params.get('local');
+
     return (
       <div className="h-full flex items-center justify-center bg-bg-primary">
         <div className="text-center max-w-md px-6">
           <div className="text-4xl mb-4">⚠</div>
           <h1 className="text-lg font-semibold text-text-primary mb-2">Failed to Load Data</h1>
           <p className="text-text-secondary text-sm mb-4">{error}</p>
-          <p className="text-text-muted text-xs">
-            Make sure <code className="bg-bg-tertiary px-1.5 py-0.5 rounded">/public/data.json</code> exists.
-            <br />
-            Run: <code className="bg-bg-tertiary px-1.5 py-0.5 rounded">uv run llm-path cook ./traces/trace.jsonl -o ./viewer/public/data.json</code>
-          </p>
+          {localPath ? (
+            <p className="text-text-muted text-xs">
+              File not found: <code className="bg-bg-tertiary px-1.5 py-0.5 rounded">{localPath}</code>
+            </p>
+          ) : (
+            <p className="text-text-muted text-xs">
+              Run: <code className="bg-bg-tertiary px-1.5 py-0.5 rounded">llm-path viewer ./traces/trace.jsonl</code>
+            </p>
+          )}
         </div>
       </div>
     );

@@ -10,9 +10,18 @@ interface UseTraceDataResult {
   getRequest: (id: string) => Request | undefined;
 }
 
-function getDataUrl(): string {
+interface DataSource {
+  type: 'url' | 'local';
+  value: string;
+}
+
+function getDataSource(): DataSource {
   const params = new URLSearchParams(window.location.search);
-  return params.get('data') || 'data.json';
+  const local = params.get('local');
+  if (local) {
+    return { type: 'local', value: local };
+  }
+  return { type: 'url', value: params.get('data') || 'data.json' };
 }
 
 export function useTraceData(): UseTraceDataResult {
@@ -22,11 +31,17 @@ export function useTraceData(): UseTraceDataResult {
 
   useEffect(() => {
     async function loadData() {
-      const dataUrl = getDataUrl();
+      const source = getDataSource();
       try {
-        const response = await fetch(dataUrl);
+        let url: string;
+        if (source.type === 'local') {
+          url = `/_local?path=${encodeURIComponent(source.value)}`;
+        } else {
+          url = source.value;
+        }
+        const response = await fetch(url);
         if (!response.ok) {
-          throw new Error(`Failed to load data from ${dataUrl}: ${response.status}`);
+          throw new Error(`Failed to load data: ${response.status}`);
         }
         const json = await response.json();
         setData(json);

@@ -1,6 +1,6 @@
 [project]
 name = "llm-path"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A tool for tracing LLM requests"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -16,6 +16,20 @@ llm-path = "llm_path.cli:main"
 [project.optional-dependencies]
 dev = [
     "ruff>=0.3.0",
+]
+
+[tool.hatch.version]
+path = "llm_path/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["llm_path"]
+# Include viewer_dist if it exists (created by release script)
+artifacts = ["llm_path/viewer_dist/**"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "llm_path/**/*.py",
+    "llm_path/viewer_dist/**",
 ]
 
 [tool.ruff]

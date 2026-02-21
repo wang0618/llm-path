@@ -8,6 +8,8 @@ import uvicorn
 from .cook import cook_traces
 from .proxy import DEFAULT_TARGET_URL, create_app
 from .storage import JSONLStorage
+from .viewer import DEFAULT_PORT as VIEWER_DEFAULT_PORT
+from .viewer import run_viewer
 
 
 def run_proxy(args: argparse.Namespace) -> None:
@@ -31,6 +33,11 @@ def run_cook(args: argparse.Namespace) -> None:
     cook_traces(args.input, args.output, args.format)
 
 
+def run_viewer_cmd(args: argparse.Namespace) -> None:
+    """Run the viewer server."""
+    run_viewer(args.input, args.port, args.host)
+
+
 def main():
     """Main entry point for the CLI."""
     # Configure logging
@@ -39,9 +46,7 @@ def main():
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
-    parser = argparse.ArgumentParser(
-        description="LLM Path - Proxy server for tracing LLM requests"
-    )
+    parser = argparse.ArgumentParser(description="LLM Path - Proxy server for tracing LLM requests")
     subparsers = parser.add_subparsers(dest="command")
 
     # proxy subcommand
@@ -96,12 +101,35 @@ def main():
         help="API format of input traces: auto (default), openai, or claude",
     )
 
+    # viewer subcommand
+    viewer_parser = subparsers.add_parser(
+        "viewer", help="Start the viewer server to visualize traces"
+    )
+    viewer_parser.add_argument(
+        "input",
+        help="Input trace file (JSONL or cooked JSON)",
+    )
+    viewer_parser.add_argument(
+        "--port",
+        type=int,
+        default=VIEWER_DEFAULT_PORT,
+        help=f"Port to listen on (default: {VIEWER_DEFAULT_PORT})",
+    )
+    viewer_parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host to bind to (default: 127.0.0.1)",
+    )
+
     args = parser.parse_args()
 
     if args.command == "proxy":
         run_proxy(args)
     elif args.command == "cook":
         run_cook(args)
+    elif args.command == "viewer":
+        run_viewer_cmd(args)
     else:
         parser.print_help()
 
