@@ -15,7 +15,7 @@ A lightweight tool for tracing LLM API requests — intercept, record, and visua
 
 ```bash
 # Clone the repository
-git clone https://github.com/anthropics/llm-trace.git
+git clone https://github.com/wang0618/llm-trace.git
 cd llm-trace
 
 # Install Python dependencies
@@ -30,7 +30,7 @@ cd viewer && npm install
 ### 1. Start the Proxy
 
 ```bash
-uv run llm-trace serve --port 8080 --output ./traces/trace.jsonl
+uv run llm-trace proxy --port 8080 --target https://api.openai.com --output ./traces/trace.jsonl
 ```
 
 ### 2. Point Your Client to the Proxy
@@ -105,7 +105,7 @@ The viewer displays requests as a **dependency forest**:
 
 ```bash
 # Start proxy server
-uv run llm-trace serve [OPTIONS]
+uv run llm-trace proxy [OPTIONS]
   --port      Port to listen on (default: 8080)
   --output    Output file path (default: ./traces/trace.jsonl)
   --target    Target API URL (default: https://api.openai.com)

@@ -6,7 +6,7 @@ A tool for tracing LLM requests - intercepts API calls and saves them for debugg
 
 ```bash
 # Start proxy server
-uv run llm-trace serve --port 8080 --output ./traces/trace.jsonl
+uv run llm-trace proxy --port 8080 --output ./traces/trace.jsonl
 
 # Preprocess traces for visualization
 uv run llm-trace cook ./traces/trace.jsonl -o ./viewer/public/data.json
@@ -30,7 +30,7 @@ open http://localhost:port/?data=path/to/other.json
 ```
 llm-trace/
 ├── llm_trace/           # Main package
-│   ├── cli.py           # CLI entry point (subcommands: serve, cook)
+│   ├── cli.py           # CLI entry point (subcommands: proxy, cook)
 │   ├── cook.py          # Trace preprocessing for visualization
 │   ├── proxy.py         # Proxy server (Starlette + httpx)
 │   ├── storage.py       # JSONL append-only storage

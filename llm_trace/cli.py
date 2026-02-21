@@ -10,7 +10,7 @@ from .proxy import DEFAULT_TARGET_URL, create_app
 from .storage import JSONLStorage
 
 
-def run_serve(args: argparse.Namespace) -> None:
+def run_proxy(args: argparse.Namespace) -> None:
     """Run the proxy server."""
     # Create storage and app
     storage = JSONLStorage(args.output)
@@ -44,29 +44,29 @@ def main():
     )
     subparsers = parser.add_subparsers(dest="command")
 
-    # serve subcommand (original functionality)
-    serve_parser = subparsers.add_parser(
-        "serve", help="Start the proxy server to trace LLM requests"
+    # proxy subcommand
+    proxy_parser = subparsers.add_parser(
+        "proxy", help="Start the proxy server to trace LLM requests"
     )
-    serve_parser.add_argument(
+    proxy_parser.add_argument(
         "--port",
         type=int,
         default=8080,
         help="Port to listen on (default: 8080)",
     )
-    serve_parser.add_argument(
+    proxy_parser.add_argument(
         "--host",
         type=str,
         default="127.0.0.1",
         help="Host to bind to (default: 127.0.0.1)",
     )
-    serve_parser.add_argument(
+    proxy_parser.add_argument(
         "--output",
         type=str,
         default="./traces/trace.jsonl",
         help="Output JSONL file path (default: ./traces/trace.jsonl)",
     )
-    serve_parser.add_argument(
+    proxy_parser.add_argument(
         "--target",
         type=str,
         default=DEFAULT_TARGET_URL,
@@ -98,8 +98,8 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "serve":
-        run_serve(args)
+    if args.command == "proxy":
+        run_proxy(args)
     elif args.command == "cook":
         run_cook(args)
     else:
