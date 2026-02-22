@@ -96,9 +96,9 @@ def main():
     cook_parser.add_argument(
         "--format",
         type=str,
-        choices=["auto", "openai", "claude"],
+        choices=["auto", "openai", "claude", "gemini"],
         default="auto",
-        help="API format of input traces: auto (default), openai, or claude",
+        help="API format of input traces: auto (default), openai, claude, or gemini",
     )
 
     # viewer subcommand

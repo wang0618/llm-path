@@ -31,7 +31,7 @@ class TraceCooker:
 
         Args:
             records: List of raw trace records
-            api_format: API format ("auto", "openai", or "claude")
+            api_format: API format ("auto", "openai", "claude", or "gemini")
 
         Returns:
             CookedOutput with deduplicated messages, tools, and requests
@@ -77,7 +77,7 @@ def cook_traces(input_path: str, output_path: str, api_format: str = "auto") -> 
     Args:
         input_path: Path to input JSONL/JSON trace file
         output_path: Path to output JSON file
-        api_format: API format of input traces: "auto", "openai", or "claude"
+        api_format: API format of input traces: "auto", "openai", "claude", or "gemini"
     """
     input_file = Path(input_path)
     output_file = Path(output_path)

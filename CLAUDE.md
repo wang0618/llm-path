@@ -44,7 +44,8 @@ llm-path/
 │   │   └── providers/        # API format providers
 │   │       ├── __init__.py   # Provider registry
 │   │       ├── openai.py     # OpenAI format (+ SSE parsing)
-│   │       └── claude.py     # Claude format (+ SSE parsing)
+│   │       ├── claude.py     # Claude format (+ SSE parsing)
+│   │       └── gemini.py     # Gemini format
 │   ├── proxy.py         # Proxy server (Starlette + httpx)
 │   ├── storage.py       # JSONL append-only storage
 │   ├── viewer.py        # Viewer server (serves React app + data)
@@ -100,6 +101,9 @@ The `cook` command transforms raw JSONL traces into visualization-ready JSON:
   - `assistant` with tool_calls → `tool_use`
   - `tool` → `tool_result`
   - Claude thinking blocks → separate `thinking` messages
+  - Gemini `model` → `assistant`
+  - Gemini `function_call` → `tool_use`
+  - Gemini `function_response` → `tool_result`
 - **Response messages**: Each request has `response_messages` (array) to support multiple response parts (e.g., thinking + assistant)
 - **Request dependency analysis**: Builds a dependency forest (not linear chain) by:
   - Using Levenshtein distance for parent detection
@@ -119,7 +123,8 @@ See `docs/request-dependency.md` for algorithm details.
 The cook module uses a provider-based architecture for extensibility:
 
 - **Outer modules** (`cooker.py`, `deduplicator.py`, `dependency.py`) only work with standardized data classes (`CookedMessage`, `CookedRequest`, etc.)
-- **Providers** (`providers/openai.py`, `providers/claude.py`) encapsulate all format-specific logic including SSE parsing
+- **Providers** (`providers/openai.py`, `providers/claude.py`, `providers/gemini.py`) encapsulate all format-specific logic including SSE parsing
+- **Supported formats**: OpenAI, Claude (Anthropic), Gemini (Google) - auto-detected or specified via `--format` flag
 - **Adding a new provider**: Create `providers/newapi.py` implementing `BaseProvider`, register in `providers/__init__.py`
 
 ## Viewer Features

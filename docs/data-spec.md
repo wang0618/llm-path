@@ -4,7 +4,7 @@ This document describes the input formats supported by the `cook` command and th
 
 ## Input Formats
 
-The `cook` command supports two API formats: **OpenAI** and **Claude**. Format is auto-detected per record, or can be specified via `--format` flag.
+The `cook` command supports three API formats: **OpenAI**, **Claude**, and **Gemini**. Format is auto-detected per record, or can be specified via `--format` flag.
 
 ### OpenAI Format
 
@@ -331,6 +331,171 @@ Or with tool use:
 
 ---
 
+### Gemini Format
+
+#### Request Structure
+
+```json
+{
+  "id": "uuid",
+  "timestamp": "2026-02-20T10:00:00Z",
+  "duration_ms": 1200,
+  "request": {
+    "contents": [...],
+    "system_instruction": {...},
+    "tools": [...]
+  },
+  "response": {
+    "candidates": [...],
+    "modelVersion": "gemini-2.0-flash"
+  },
+  "error": null
+}
+```
+
+#### System Instruction
+
+Gemini uses a separate `system_instruction` field with `parts` array:
+
+```json
+{
+  "system_instruction": {
+    "parts": [
+      {"text": "You are a helpful assistant."}
+    ]
+  }
+}
+```
+
+#### Message Types (Contents)
+
+Gemini uses `contents` instead of `messages`, and `model` instead of `assistant` for the role.
+
+**User Message**
+```json
+{
+  "role": "user",
+  "parts": [
+    {"text": "Hello, how are you?"}
+  ]
+}
+```
+
+**Model Message (text only)**
+```json
+{
+  "role": "model",
+  "parts": [
+    {"text": "I'm doing well, thank you!"}
+  ]
+}
+```
+
+**Model Message (with function call)**
+```json
+{
+  "role": "model",
+  "parts": [
+    {"text": "Let me check the weather for you."},
+    {
+      "function_call": {
+        "name": "get_weather",
+        "args": {"location": "Tokyo"}
+      }
+    }
+  ]
+}
+```
+
+**Function Response (tool result)**
+
+Function responses have no role (or role is `None`):
+```json
+{
+  "parts": [
+    {
+      "function_response": {
+        "name": "get_weather",
+        "response": {
+          "content": "Sunny, 22°C"
+        }
+      }
+    }
+  ]
+}
+```
+
+#### Tool Definition
+
+Gemini wraps tool definitions in `function_declarations`:
+
+```json
+{
+  "tools": [
+    {
+      "function_declarations": [
+        {
+          "name": "get_weather",
+          "description": "Get current weather for a location",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {"type": "string"}
+            },
+            "required": ["location"]
+          }
+        }
+      ]
+    }
+  ]
+}
+```
+
+#### Response Structure
+
+```json
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {"text": "Hello!"}
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ],
+  "modelVersion": "gemini-2.0-flash"
+}
+```
+
+With function call:
+```json
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "function_call": {
+              "name": "get_weather",
+              "args": {"location": "Tokyo"}
+            },
+            "thoughtSignature": "..."
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Note: `thoughtSignature` indicates thinking mode was used, but the actual thinking content is not exposed in Gemini's API.
+
+---
+
 ## Output Format (Cooked)
 
 The `cook` command transforms traces into a deduplicated, visualization-ready format:
@@ -395,6 +560,13 @@ Note: `response_messages` is an array to support multiple response parts. Text c
 
 ### Format Detection
 
+A record is detected as **Gemini** format if any of these conditions are met:
+1. `request.contents` exists (instead of `messages`)
+2. `request.system_instruction` exists
+3. Tools have `function_declarations` array
+4. Response has `candidates` with `content.parts` structure
+5. Response has `modelVersion` field
+
 A record is detected as **Claude** format if any of these conditions are met:
 1. **Streaming response**: SSE lines contain events with `type` in (`message_start`, `content_block_start`, `content_block_delta`, `message_delta`, `message_stop`)
 2. `request.system` is a list
@@ -418,6 +590,11 @@ Otherwise, it's treated as **OpenAI** format.
 | Claude `assistant` | text blocks only | `assistant` |
 | Claude `assistant` | has tool_use blocks | `tool_use` |
 | Claude `assistant` | thinking blocks | `thinking` (separate messages) |
+| Gemini `system_instruction` | - | `system` |
+| Gemini `user` | - | `user` |
+| Gemini `model` | text parts only | `assistant` |
+| Gemini `model` | has function_call | `tool_use` |
+| Gemini (no role) | has function_response | `tool_result` |
 
 ### Content Block Processing (Claude)
 
@@ -429,6 +606,15 @@ Otherwise, it's treated as **OpenAI** format.
 | `tool_result` | Separate message with `tool_result` role |
 | `image` | Placeholder `[image]` |
 
+### Parts Processing (Gemini)
+
+| Part Type | Processing |
+|-----------|------------|
+| `text` | Concatenated into message content |
+| `function_call` / `functionCall` | Collected into `tool_calls` array: `{name, arguments: args}` |
+| `function_response` / `functionResponse` | Separate message with `tool_result` role |
+| `thoughtSignature` | Ignored (no content exposed) |
+
 ### Tool Definition Normalization
 
 | Source | Output |
@@ -439,6 +625,9 @@ Otherwise, it's treated as **OpenAI** format.
 | Claude `name` | `name` |
 | Claude `description` | `description` |
 | Claude `input_schema` | `parameters` |
+| Gemini `function_declarations[].name` | `name` |
+| Gemini `function_declarations[].description` | `description` |
+| Gemini `function_declarations[].parameters` | `parameters` |
 
 ### Tool Calls Normalization
 
@@ -450,6 +639,8 @@ Otherwise, it's treated as **OpenAI** format.
 | Claude `name` | `name` |
 | Claude `input` | `arguments` |
 | Claude `id` | `id` |
+| Gemini `function_call.name` | `name` |
+| Gemini `function_call.args` | `arguments` |
 
 ### Tool Result Normalization
 
@@ -458,6 +649,8 @@ Otherwise, it's treated as **OpenAI** format.
 | OpenAI `tool_call_id` | `tool_use_id` |
 | Claude `tool_use_id` | `tool_use_id` |
 | Claude `is_error` | `is_error` |
+| Gemini `function_response.name` | `tool_use_id` (uses function name as reference) |
+| Gemini `function_response.response.content` | `content` |
 
 ### Deduplication
 
@@ -563,3 +756,37 @@ Claude content blocks are reconstructed and converted to the standard response f
 ```
 
 Note: Thinking blocks become separate messages (m2) instead of being merged into tool_use content.
+
+### Gemini Request → Cooked
+
+**Input:**
+```json
+{
+  "request": {
+    "system_instruction": {
+      "parts": [{"text": "Be helpful"}]
+    },
+    "contents": [
+      {"role": "user", "parts": [{"text": "What's 2+2?"}]},
+      {"role": "model", "parts": [
+        {"function_call": {"name": "calc", "args": {"expr": "2+2"}}}
+      ]},
+      {"parts": [
+        {"function_response": {"name": "calc", "response": {"content": "4"}}}
+      ]}
+    ]
+  }
+}
+```
+
+**Output Messages:**
+```json
+[
+  {"id": "m0", "role": "system", "content": "Be helpful", "tool_calls": null, "tool_use_id": null, "is_error": null},
+  {"id": "m1", "role": "user", "content": "What's 2+2?", "tool_calls": null, "tool_use_id": null, "is_error": null},
+  {"id": "m2", "role": "tool_use", "content": "", "tool_calls": [{"name": "calc", "arguments": {"expr": "2+2"}}], "tool_use_id": null, "is_error": null},
+  {"id": "m3", "role": "tool_result", "content": "4", "tool_calls": null, "tool_use_id": "calc", "is_error": null}
+]
+```
+
+Note: Gemini uses function name as the `tool_use_id` reference since it doesn't provide explicit call IDs.

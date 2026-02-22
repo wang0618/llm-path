@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass, field
 from typing import Any, Literal
 
-ApiFormat = Literal["auto", "openai", "claude"]
+ApiFormat = Literal["auto", "openai", "claude", "gemini"]
 
 
 @dataclass

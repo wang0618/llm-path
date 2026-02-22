@@ -3,11 +3,13 @@
 from ..base import BaseProvider
 from ..models import ApiFormat
 from .claude import ClaudeProvider
+from .gemini import GeminiProvider
 from .openai import OpenAIProvider
 
 # Provider registry - order matters for auto-detection
 # More specific providers should come first
 PROVIDERS: list[type[BaseProvider]] = [
+    GeminiProvider,  # Gemini has distinct format (contents, system_instruction)
     ClaudeProvider,
     OpenAIProvider,  # OpenAI is the fallback/default
 ]
@@ -34,7 +36,7 @@ def get_provider(api_format: ApiFormat, record: dict | None = None) -> type[Base
     """Get the provider class for the specified format.
 
     Args:
-        api_format: The API format ("auto", "openai", or "claude")
+        api_format: The API format ("auto", "openai", "claude", or "gemini")
         record: Optional record for auto-detection
 
     Returns:
@@ -48,6 +50,9 @@ def get_provider(api_format: ApiFormat, record: dict | None = None) -> type[Base
     if api_format == "claude":
         return ClaudeProvider
 
+    if api_format == "gemini":
+        return GeminiProvider
+
     return OpenAIProvider
 
 
@@ -57,4 +62,5 @@ __all__ = [
     "get_provider",
     "OpenAIProvider",
     "ClaudeProvider",
+    "GeminiProvider",
 ]

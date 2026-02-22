@@ -12,7 +12,7 @@
 
 ## Features
 
-- **Transparent Proxy** — Drop-in HTTP proxy that captures all LLM API traffic. Works with any OpenAI-compatible API and Anthropic API.
+- **Transparent Proxy** — Drop-in HTTP proxy that captures all LLM API traffic. Works with OpenAI, Anthropic (Claude), and Google (Gemini) APIs.
 - **Request Visualization** — Interactive web viewer to visualize the requests topology graph and show the context diff between requests.
 
 ## Installation
