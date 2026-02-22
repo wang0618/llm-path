@@ -34,7 +34,17 @@ open http://localhost:port/?data=path/to/other.json
 llm-path/
 ├── llm_path/           # Main package
 │   ├── cli.py           # CLI entry point (subcommands: proxy, cook, viewer)
-│   ├── cook.py          # Trace preprocessing for visualization
+│   ├── cook/            # Trace preprocessing package
+│   │   ├── __init__.py       # Public API: cook_traces(), TraceCooker
+│   │   ├── models.py         # CookedMessage, CookedTool, CookedRequest, CookedOutput
+│   │   ├── deduplicator.py   # MessageDeduplicator, ToolDeduplicator
+│   │   ├── dependency.py     # DependencyAnalyzer (Levenshtein + tool matching)
+│   │   ├── base.py           # BaseProvider abstract class
+│   │   ├── cooker.py         # TraceCooker coordinator
+│   │   └── providers/        # API format providers
+│   │       ├── __init__.py   # Provider registry
+│   │       ├── openai.py     # OpenAI format (+ SSE parsing)
+│   │       └── claude.py     # Claude format (+ SSE parsing)
 │   ├── proxy.py         # Proxy server (Starlette + httpx)
 │   ├── storage.py       # JSONL append-only storage
 │   ├── viewer.py        # Viewer server (serves React app + data)
@@ -103,6 +113,14 @@ Output structure:
 ```
 
 See `docs/request-dependency.md` for algorithm details.
+
+### Cook Package Architecture
+
+The cook module uses a provider-based architecture for extensibility:
+
+- **Outer modules** (`cooker.py`, `deduplicator.py`, `dependency.py`) only work with standardized data classes (`CookedMessage`, `CookedRequest`, etc.)
+- **Providers** (`providers/openai.py`, `providers/claude.py`) encapsulate all format-specific logic including SSE parsing
+- **Adding a new provider**: Create `providers/newapi.py` implementing `BaseProvider`, register in `providers/__init__.py`
 
 ## Viewer Features
 
