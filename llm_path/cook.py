@@ -795,6 +795,12 @@ class TraceCooker:
 
     # ========== Gemini API format processing methods ==========
 
+    def _generate_gemini_call_id(self, name: str, args: dict) -> str:
+        """Generate a deterministic ID for Gemini tool calls based on content."""
+        # Use a hash of name + sorted args to create a stable ID for matching
+        content = json.dumps({"name": name, "args": args}, sort_keys=True)
+        return f"call_{hashlib.md5(content.encode()).hexdigest()[:8]}"
+
     def _process_gemini_parts(self, parts: list[dict]) -> tuple[str, list[dict]]:
         """Extract text content and tool calls from Gemini parts.
         
@@ -808,10 +814,15 @@ class TraceCooker:
                 text_parts.append(part["text"])
             elif "functionCall" in part:
                 fc = part["functionCall"]
+                name = fc.get("name", "")
+                args = fc.get("args", {})
+                # Generate ID if missing (common in Gemini REST)
+                call_id = self._generate_gemini_call_id(name, args)
+                
                 tool_calls.append({
-                    "name": fc.get("name", ""),
-                    "arguments": fc.get("args", {}),
-                    "id": "", # Gemini REST API often omits explicit IDs for calls
+                    "name": name,
+                    "arguments": args,
+                    "id": call_id, 
                 })
             elif "inlineData" in part:
                 # Handle images/blobs
@@ -836,6 +847,9 @@ class TraceCooker:
                 msg_ids.append(self._get_or_create_message("system", text, None))
 
         # 2. Handle Conversation History
+        # We need to track recent tool calls to link responses
+        recent_tool_calls = {} # name -> id
+
         for content in contents:
             role = content.get("role", "user")
             parts = content.get("parts", [])
@@ -846,8 +860,30 @@ class TraceCooker:
             
             text, tool_calls = self._process_gemini_parts(parts)
             
+            # Update recent calls cache for linking
+            for tc in tool_calls:
+                recent_tool_calls[tc["name"]] = tc["id"]
+
             # Check for functionResponse (tool_result)
             tool_results = [p for p in parts if "functionResponse" in p]
+            if tool_results:
+                for tr in tool_results:
+                    fr = tr["functionResponse"]
+                    name = fr.get("name", "")
+                    # Try to find matching call ID
+                    tool_use_id = recent_tool_calls.get(name)
+                    
+                    # Gemini functionResponse: { name: "...", response: {...} }
+                    result_content = json.dumps(fr.get("response", {}), ensure_ascii=False)
+                    msg_id = self._get_or_create_message(
+                        "tool_result", 
+                        result_content, 
+                        None,
+                        tool_use_id=tool_use_id 
+                    )
+                    msg_ids.append(msg_id)
+            else:
+                # Normal message or tool use
             if tool_results:
                 for tr in tool_results:
                     fr = tr["functionResponse"]
