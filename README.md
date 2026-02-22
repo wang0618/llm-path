@@ -63,6 +63,21 @@ llm-path viewer <input> [OPTIONS]
   --host      Host to bind to (default: 127.0.0.1)
 ```
 
+## Development Guide
+
+```bash
+git clone https://github.com/wang0618/llm-path.git
+cd llm-path
+uv sync
+
+uv run llm-path proxy --port 8080 --target https://api.openai.com --output trace.jsonl &
+uv run llm-path cook trace.jsonl -o ./viewer/public/data.json
+
+cd viewer
+npm install
+npm run dev
+```
+
 ## License
 
 MIT
