@@ -888,6 +888,8 @@ class TraceCooker:
                     # If mixed text and tool calls, add text first
                     if text:
                         msg_ids.append(self._get_or_create_message(role, text, None))
+                    # For tool calls, create a separate message with role "tool_use"
+                    # This ensures the frontend sees it as a tool use message if it's the first one
                     msg_ids.append(self._get_or_create_message("tool_use", "", tool_calls))
                 else:
                     # Ensure we always create a message even if text is empty (unless it's purely tool calls which is handled above)
