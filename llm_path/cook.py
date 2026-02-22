@@ -796,7 +796,10 @@ class TraceCooker:
     # ========== Gemini API format processing methods ==========
 
     def _process_gemini_parts(self, parts: list[dict]) -> tuple[str, list[dict]]:
-        """Extract text content and tool calls from Gemini parts."""
+        """Extract text content and tool calls from Gemini parts.
+        
+        Now supports multi-modal content placeholders.
+        """
         text_parts = []
         tool_calls = []
 
@@ -808,15 +811,31 @@ class TraceCooker:
                 tool_calls.append({
                     "name": fc.get("name", ""),
                     "arguments": fc.get("args", {}),
-                    # Gemini doesn't use explicit IDs for calls, generate one or leave empty
-                    "id": "", 
+                    "id": "", # Gemini REST API often omits explicit IDs for calls
                 })
+            elif "inlineData" in part:
+                # Handle images/blobs
+                mime_type = part["inlineData"].get("mimeType", "unknown")
+                text_parts.append(f"[inlineData: {mime_type}]")
+            elif "fileData" in part:
+                # Handle file URIs
+                file_uri = part["fileData"].get("fileUri", "unknown")
+                text_parts.append(f"[fileData: {file_uri}]")
         
         return "".join(text_parts), tool_calls
 
-    def _process_gemini_request_messages(self, contents: list[dict]) -> list[str]:
-        """Process Gemini request contents."""
+    def _process_gemini_request_messages(self, contents: list[dict], system_instruction: dict | None) -> list[str]:
+        """Process Gemini request contents and system instruction."""
         msg_ids = []
+        
+        # 1. Handle System Instruction (Top-level)
+        if system_instruction:
+            parts = system_instruction.get("parts", [])
+            text, _ = self._process_gemini_parts(parts)
+            if text:
+                msg_ids.append(self._get_or_create_message("system", text, None))
+
+        # 2. Handle Conversation History
         for content in contents:
             role = content.get("role", "user")
             parts = content.get("parts", [])
@@ -911,7 +930,11 @@ class TraceCooker:
         
         # Process request messages
         contents = request_body.get("contents", [])
-        request_msg_ids = self._process_gemini_request_messages(contents)
+        system_instruction = request_body.get("system_instruction") # Snake case in Python SDK
+        if not system_instruction:
+            system_instruction = request_body.get("systemInstruction") # Camel case in REST API
+
+        request_msg_ids = self._process_gemini_request_messages(contents, system_instruction)
         
         # Process response messages
         candidates = response_body.get("candidates", [])
