@@ -68,8 +68,8 @@ class GeminiProvider(BaseProvider):
         tool_dedup: ToolDeduplicator,
     ) -> CookedRequest:
         """Process a Gemini format trace record."""
-        request = record.get("request", {})
-        response = record.get("response", {})
+        request = record.get("request") or {}
+        response = record.get("response") or {}
         error = record.get("error")
 
         # Process system instruction

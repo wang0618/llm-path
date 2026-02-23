@@ -70,7 +70,8 @@ git clone https://github.com/wang0618/llm-path.git
 cd llm-path
 uv sync
 
-uv run llm-path proxy --port 8080 --target https://api.openai.com --output trace.jsonl &
+uv run llm-path proxy --port 8080 --target https://api.openai.com --output trace.jsonl 
+
 uv run llm-path cook trace.jsonl -o ./viewer/public/data.json
 
 cd viewer
