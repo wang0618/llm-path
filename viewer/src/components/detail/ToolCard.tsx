@@ -27,8 +27,15 @@ export function ToolCard({ tool }: ToolCardProps) {
     <div className="rounded-lg border border-border-default bg-bg-elevated overflow-hidden">
       {/* Header */}
       <div className="px-4 py-3">
-        <div className="font-mono text-sm font-medium text-text-primary">
-          {tool.name}
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-sm font-medium text-text-primary">
+            {tool.name}
+          </span>
+          {tool.is_server_side && (
+            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              Server side
+            </span>
+          )}
         </div>
         {tool.description && (
           <div className="mt-2">

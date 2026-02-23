@@ -26,6 +26,7 @@ class CookedTool:
     name: str
     description: str
     parameters: dict
+    is_server_side: bool = False  # True for server-side tools (e.g., Gemini's googleSearch)
 
 
 @dataclass

@@ -18,6 +18,7 @@ export interface Tool {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
+  is_server_side?: boolean;  // True for server-side tools (e.g., Gemini's googleSearch)
 }
 
 export interface Request {

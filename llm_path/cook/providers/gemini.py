@@ -41,10 +41,10 @@ class GeminiProvider(BaseProvider):
         if "system_instruction" in request:
             return True
 
-        # Check for Gemini tools format
+        # Check for Gemini tools format (both snake_case and camelCase)
         tools = request.get("tools", [])
         if tools and isinstance(tools, list) and isinstance(tools[0], dict):
-            if "function_declarations" in tools[0]:
+            if "function_declarations" in tools[0] or "functionDeclarations" in tools[0]:
                 return True
 
         # Check for Gemini response format
@@ -72,8 +72,8 @@ class GeminiProvider(BaseProvider):
         response = record.get("response", {})
         error = record.get("error")
 
-        # Process system instruction
-        system_instruction = request.get("system_instruction")
+        # Process system instruction (support both snake_case and camelCase)
+        system_instruction = request.get("system_instruction") or request.get("systemInstruction")
         system_msg_ids = self._process_system_instruction(system_instruction, message_dedup)
 
         # Process request messages (contents)
@@ -257,27 +257,47 @@ class GeminiProvider(BaseProvider):
         """Process Gemini tool definitions and return list of tool IDs.
 
         Gemini tools format:
-        tools: [
-            {
-                "function_declarations": [
-                    {"name": "...", "description": "...", "parameters": {...}}
-                ]
-            }
-        ]
+        1. Custom function declarations:
+           tools: [{"function_declarations": [{"name": "...", ...}]}]
+
+        2. Server-side tools (no parameters exposed):
+           tools: [{"googleSearch": {}}, {"codeExecution": {}}]
         """
         if not tools:
             return []
 
+        # Known Gemini server-side tool names
+        server_side_tools = {
+            "googleSearch": "Google Search - enables web search capabilities",
+            "googleSearchRetrieval": "Google Search Retrieval - grounding via search",
+            "codeExecution": "Code Execution - sandboxed code execution",
+        }
+
         tool_ids = []
         for tool in tools:
-            # Gemini wraps functions in function_declarations
-            declarations = tool.get("function_declarations", [])
+            # Check for function_declarations (custom tools)
+            declarations = tool.get("function_declarations") or tool.get("functionDeclarations", [])
             for decl in declarations:
                 name = decl.get("name", "")
                 description = decl.get("description", "")
                 parameters = decl.get("parameters", {})
 
                 tool_id = tool_dedup.get_or_create(name, description, parameters)
+                tool_ids.append(tool_id)
+
+            # Check for server-side tools (keys other than function_declarations)
+            for key, value in tool.items():
+                if key in ("function_declarations", "functionDeclarations"):
+                    continue
+
+                # This is a server-side tool
+                description = server_side_tools.get(key, f"Gemini server-side tool: {key}")
+                # Use the tool config as parameters if it's not empty
+                parameters = value if isinstance(value, dict) and value else {}
+
+                tool_id = tool_dedup.get_or_create(
+                    key, description, parameters, is_server_side=True
+                )
                 tool_ids.append(tool_id)
 
         return tool_ids
