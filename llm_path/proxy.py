@@ -55,13 +55,15 @@ class LLMProxy:
         # Build headers for upstream request (forward most headers)
         headers = {}
         for key, value in request.headers.items():
-            # Skip hop-by-hop headers and accept-encoding (httpx auto-decompresses)
+            # Skip hop-by-hop headers, accept-encoding (httpx auto-decompresses),
+            # and content-length (httpx sets this based on actual body size)
             if key.lower() not in (
                 "host",
                 "connection",
                 "keep-alive",
                 "transfer-encoding",
                 "accept-encoding",
+                "content-length",
             ):
                 headers[key] = value
 
