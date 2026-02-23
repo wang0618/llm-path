@@ -333,6 +333,8 @@ Or with tool use:
 
 ### Gemini Format
 
+Both camelCase and snake_case are supported for fields.
+
 #### Request Structure
 
 ```json
@@ -342,7 +344,7 @@ Or with tool use:
   "duration_ms": 1200,
   "request": {
     "contents": [...],
-    "system_instruction": {...},
+    "systemInstruction": {...},
     "tools": [...]
   },
   "response": {
@@ -355,11 +357,11 @@ Or with tool use:
 
 #### System Instruction
 
-Gemini uses a separate `system_instruction` field with `parts` array:
+Gemini uses a separate system instruction field with `parts` array.
 
 ```json
 {
-  "system_instruction": {
+  "systemInstruction": {
     "parts": [
       {"text": "You are a helpful assistant."}
     ]
@@ -562,7 +564,7 @@ Note: `response_messages` is an array to support multiple response parts. Text c
 
 A record is detected as **Gemini** format if any of these conditions are met:
 1. `request.contents` exists (instead of `messages`)
-2. `request.system_instruction` exists
+2. `request.system_instruction` or `request.systemInstruction` exists
 3. Tools have `function_declarations` array
 4. Response has `candidates` with `content.parts` structure
 5. Response has `modelVersion` field
@@ -590,7 +592,7 @@ Otherwise, it's treated as **OpenAI** format.
 | Claude `assistant` | text blocks only | `assistant` |
 | Claude `assistant` | has tool_use blocks | `tool_use` |
 | Claude `assistant` | thinking blocks | `thinking` (separate messages) |
-| Gemini `system_instruction` | - | `system` |
+| Gemini `systemInstruction` / `system_instruction` | - | `system` |
 | Gemini `user` | - | `user` |
 | Gemini `model` | text parts only | `assistant` |
 | Gemini `model` | has function_call | `tool_use` |
@@ -763,7 +765,7 @@ Note: Thinking blocks become separate messages (m2) instead of being merged into
 ```json
 {
   "request": {
-    "system_instruction": {
+    "systemInstruction": {
       "parts": [{"text": "Be helpful"}]
     },
     "contents": [

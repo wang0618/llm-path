@@ -1,0 +1,293 @@
+// https://developers.openai.com/api/reference/resources/chat/subresources/completions/methods/create
+{
+  "id": "example-request-001",
+  "timestamp": "2026-02-22T10:30:00Z",
+  "duration_ms": 1500,
+  "request": {
+    "model": "gpt-4",
+    "max_tokens": 4096,
+    "temperature": 0.7,
+    "tool_choice": "auto",
+    "messages": [
+      // 系统消息 - content 为字符串
+      {
+        "role": "system",
+        "content": "You are a helpful assistant with access to tools."
+      },
+      // 用户消息 - content 为字符串（简单形式）
+      {
+        "role": "user",
+        "content": "Hello, what can you help me with?"
+      },
+      // 助手消息 - 纯文本回复
+      {
+        "role": "assistant",
+        "content": "I can help you with various tasks including file operations, web searches, and calculations."
+      },
+      // 用户消息 - content 为数组（包含文本和图片）
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "What's in this image? And also, what's the weather in Tokyo?"
+          },
+          {
+            "type": "image_url",
+            "image_url": {
+              "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+            }
+          }
+        ]
+      },
+      // 助手消息 - 带有 tool_calls（content 为 null 或空字符串）
+      {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_abc123",
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "arguments": "{\"location\": \"Tokyo\", \"unit\": \"celsius\"}"
+            }
+          },
+          {
+            "id": "call_def456",
+            "type": "function",
+            "function": {
+              "name": "analyze_image",
+              "arguments": "{\"description\": \"A small red pixel image\"}"
+            }
+          }
+        ]
+      },
+      // 工具结果消息 - 第一个工具调用的结果
+      {
+        "role": "tool",
+        "tool_call_id": "call_abc123",
+        "name": "get_weather",
+        "content": "{\"temperature\": 22, \"condition\": \"Sunny\", \"humidity\": 45}"
+      },
+      // 工具结果消息 - 第二个工具调用的结果
+      {
+        "role": "tool",
+        "tool_call_id": "call_def456",
+        "name": "analyze_image",
+        "content": "The image is a 1x1 pixel red PNG image."
+      },
+      // 助手消息 - 同时包含 content 和 tool_calls
+      {
+        "role": "assistant",
+        "content": "Let me check another source for more details.",
+        "tool_calls": [
+          {
+            "id": "call_ghi789",
+            "type": "function",
+            "function": {
+              "name": "web_search",
+              "arguments": "{\"query\": \"Tokyo weather forecast today\"}"
+            }
+          }
+        ]
+      },
+      // 工具结果消息
+      {
+        "role": "tool",
+        "tool_call_id": "call_ghi789",
+        "content": "Tokyo weather: Sunny with highs of 24°C."
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_weather",
+          "description": "Get current weather for a location",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "location": {
+                "type": "string",
+                "description": "The city name"
+              },
+              "unit": {
+                "type": "string",
+                "enum": [
+                  "celsius",
+                  "fahrenheit"
+                ],
+                "description": "Temperature unit"
+              }
+            },
+            "required": [
+              "location"
+            ]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "analyze_image",
+          "description": "Analyze an image and return its description",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "description": {
+                "type": "string",
+                "description": "Initial description or context"
+              }
+            },
+            "required": []
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "web_search",
+          "description": "Search the web for information",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Search query"
+              },
+              "count": {
+                "type": "integer",
+                "description": "Number of results (1-10)",
+                "minimum": 1,
+                "maximum": 10
+              }
+            },
+            "required": [
+              "query"
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "response": {
+    // choices 数组包含多种响应类型的示例
+    "id": "chatcmpl-example001",
+    "model": "gpt-4",
+    "object": "chat.completion",
+    "created": 1708680600,
+    "choices": [
+      // choice 0: 普通文本响应
+      {
+        "index": 0,
+        "finish_reason": "stop",
+        "logprobs": null,
+        "message": {
+          "role": "assistant",
+          "content": "Based on the image analysis and weather data:\n\n1. **Image**: The image is a tiny 1x1 pixel red PNG.\n\n2. **Tokyo Weather**: It's currently sunny with a temperature of 22°C and 45% humidity. The forecast shows highs of 24°C today.",
+          "tool_calls": null
+        }
+      },
+      // choice 1: 带有 tool_calls 的响应（content 为空或 null）
+      {
+        "index": 1,
+        "finish_reason": "tool_calls",
+        "logprobs": null,
+        "message": {
+          "role": "assistant",
+          "content": "",
+          "tool_calls": [
+            {
+              "id": "call_xyz001",
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "arguments": "{\"location\": \"Osaka\", \"unit\": \"celsius\"}"
+              }
+            }
+          ]
+        }
+      },
+      // choice 2: 同时包含 content 和 tool_calls
+      {
+        "index": 2,
+        "finish_reason": "tool_calls",
+        "logprobs": null,
+        "message": {
+          "role": "assistant",
+          "content": "I'll also check the weather in Osaka for comparison.",
+          "tool_calls": [
+            {
+              "id": "call_xyz002",
+              "type": "function",
+              "function": {
+                "name": "get_weather",
+                "arguments": "{\"location\": \"Osaka\"}"
+              }
+            },
+            {
+              "id": "call_xyz003",
+              "type": "function",
+              "function": {
+                "name": "web_search",
+                "arguments": "{\"query\": \"Osaka attractions\"}"
+              }
+            }
+          ]
+        }
+      },
+      // choice 3: 因长度截断的响应
+      {
+        "index": 3,
+        "finish_reason": "length",
+        "logprobs": null,
+        "message": {
+          "role": "assistant",
+          "content": "Here is a very long response that got truncated due to max_tokens limit...",
+          "tool_calls": null
+        }
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 1500,
+      "completion_tokens": 200,
+      "total_tokens": 1700,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0
+      }
+    }
+  },
+  "error": null,
+  // ============================================================
+  // 以下是流式响应的示例（与上面的非流式响应二选一）
+  // ============================================================
+  // 流式文本响应示例
+  "_streaming_response_example": {
+    "stream": true,
+    "sse_lines": [
+      "data: {\"id\":\"chatcmpl-stream001\",\"model\":\"gpt-4\",\"object\":\"chat.completion.chunk\",\"created\":1708680600,\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\"},\"finish_reason\":null}]}",
+      "data: {\"id\":\"chatcmpl-stream001\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\"Based on\"},\"finish_reason\":null}]}",
+      "data: {\"id\":\"chatcmpl-stream001\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" the image\"},\"finish_reason\":null}]}",
+      "data: {\"id\":\"chatcmpl-stream001\",\"choices\":[{\"index\":0,\"delta\":{\"content\":\" analysis\"},\"finish_reason\":null}]}",
+      "data: {\"id\":\"chatcmpl-stream001\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"stop\"}]}",
+      "data: [DONE]"
+    ]
+  },
+  // 流式 tool_calls 响应示例（arguments 分块传输）
+  "_streaming_tool_calls_example": {
+    "stream": true,
+    "sse_lines": [
+      "data: {\"id\":\"chatcmpl-stream002\",\"model\":\"gpt-4\",\"object\":\"chat.completion.chunk\",\"created\":1708680700,\"choices\":[{\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":null},\"finish_reason\":null}]}",
+      "data: {\"id\":\"chatcmpl-stream002\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_stream001\",\"type\":\"function\",\"function\":{\"name\":\"get_weather\",\"arguments\":\"\"}}]},\"finish_reason\":null}]}",
+      "data: {\"id\":\"chatcmpl-stream002\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"{\\\"location\\\"\"}}]},\"finish_reason\":null}]}",
+      "data: {\"id\":\"chatcmpl-stream002\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\": \\\"Tokyo\\\"\"}}]},\"finish_reason\":null}]}",
+      "data: {\"id\":\"chatcmpl-stream002\",\"choices\":[{\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"}\"}}]},\"finish_reason\":null}]}",
+      "data: {\"id\":\"chatcmpl-stream002\",\"choices\":[{\"index\":0,\"delta\":{},\"finish_reason\":\"tool_calls\"}]}",
+      "data: [DONE]"
+    ]
+  }
+}

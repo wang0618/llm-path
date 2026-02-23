@@ -1,0 +1,369 @@
+{
+  // ============================================================
+  // Gemini API 格式的完整示例
+  // 此文件展示了一条包含各种情况的 LLM 请求记录
+  // 字段名同时支持 camelCase 或 snake_case
+  // https://ai.google.dev/api/generate-content?hl=zh-cn#text_gen_text_only_prompt-SHELL
+  // ============================================================
+  "id": "example-gemini-001",
+  "timestamp": "2026-02-22T11:30:00Z",
+  "duration_ms": 2500,
+  "request": {
+    // ============================================================
+    // system_instruction - Gemini 使用独立的系统指令字段
+    // 结构: { parts: [{ text: "..." }, ...] }
+    // ============================================================
+    "system_instruction": {
+      "parts": [
+        {
+          "text": "You are a helpful AI assistant with access to various tools."
+        },
+        // parts 数组可以包含多个 text 块
+        {
+          "text": "Always be concise and accurate in your responses."
+        }
+      ]
+    },
+    // ============================================================
+    // contents - Gemini 使用 contents 而非 messages
+    // 角色: "user" 或 "model"（不是 "assistant"）
+    // 消息体: parts 数组（不是 content）
+    // ============================================================
+    "contents": [
+      // ----- 用户消息: 纯文本 -----
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Hello, what can you help me with?"
+          }
+        ]
+      },
+      // ----- model 消息: 纯文本回复 -----
+      {
+        "role": "model",
+        "parts": [
+          {
+            "text": "I can help you with file operations, web searches, weather queries, and more."
+          }
+        ]
+      },
+      // ----- 用户消息: 带图片（inline_data 形式） -----
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "What's in this image? And also check the weather in Tokyo."
+          },
+          // Gemini 的图片格式使用 inline_data
+          {
+            "inline_data": {
+              "mime_type": "image/png",
+              "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+            }
+          }
+        ]
+      },
+      // ----- model 消息: 带 function_call（工具调用）-----
+      // 注意: 可以同时包含 text 和 function_call
+      {
+        "role": "model",
+        "parts": [
+          // 可选的前置文本
+          {
+            "text": "Let me check the weather for you."
+          },
+          // function_call - 工具调用（snake_case 命名）
+          {
+            "function_call": {
+              "name": "get_weather",
+              "args": {
+                "location": "Tokyo",
+                "unit": "celsius"
+              }
+            },
+            // thoughtSignature 表示使用了思考模式，但思考内容不可见
+            "thoughtSignature": "Eq0ICqoIAb4+9vvMQG5L8zXGkmQj2lDVkL..."
+          }
+        ]
+      },
+      // ----- function_response: 工具结果 -----
+      // 注意: function_response 没有 role 字段（或 role 为 null）
+      {
+        "parts": [
+          {
+            "function_response": {
+              "name": "get_weather",
+              "response": {
+                "content": "{\"temperature\": 22, \"condition\": \"Sunny\", \"humidity\": 45}"
+              }
+            }
+          }
+        ]
+      },
+      // ----- model 消息: 多个 function_call -----
+      {
+        "role": "model",
+        "parts": [
+          // 第一个 function_call (使用 functionCall - camelCase 命名，两种都支持)
+          {
+            "functionCall": {
+              "name": "analyze_image",
+              "args": {
+                "description": "A small image"
+              }
+            },
+            "thoughtSignature": "EvkHCvYHAb4+9vvjFinsAhVPd60d6v4d..."
+          },
+          // 第二个 function_call
+          {
+            "functionCall": {
+              "name": "web_search",
+              "args": {
+                "query": "Tokyo attractions"
+              }
+            }
+          }
+        ]
+      },
+      // ----- 多个 function_response -----
+      {
+        "parts": [
+          // functionResponse - camelCase 命名
+          {
+            "functionResponse": {
+              "name": "analyze_image",
+              "response": {
+                "content": "The image is a 1x1 pixel red PNG image."
+              }
+            }
+          },
+          {
+            "functionResponse": {
+              "name": "web_search",
+              "response": {
+                "content": "Top attractions in Tokyo: 1. Senso-ji Temple 2. Tokyo Tower 3. Shibuya Crossing"
+              }
+            }
+          }
+        ]
+      },
+      // ----- 用户消息: 带 file_data (外部文件引用) -----
+      {
+        "role": "user",
+        "parts": [
+          {
+            "text": "Can you also read this PDF?"
+          },
+          // file_data 用于引用已上传的文件
+          {
+            "file_data": {
+              "mime_type": "application/pdf",
+              "file_uri": "gs://bucket/document.pdf"
+            }
+          }
+        ]
+      }
+    ],
+    // ============================================================
+    // tools - Gemini 的工具定义使用 function_declarations 包装
+    // ============================================================
+    "tools": [
+      {
+        "function_declarations": [
+          {
+            "name": "get_weather",
+            "description": "Get current weather for a location",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "location": {
+                  "type": "string",
+                  "description": "The city name"
+                },
+                "unit": {
+                  "type": "string",
+                  "enum": [
+                    "celsius",
+                    "fahrenheit"
+                  ],
+                  "description": "Temperature unit"
+                }
+              },
+              "required": [
+                "location"
+              ]
+            }
+          },
+          {
+            "name": "analyze_image",
+            "description": "Analyze an image and return its description",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "description": {
+                  "type": "string",
+                  "description": "Initial description or context"
+                }
+              },
+              "required": []
+            }
+          },
+          {
+            "name": "web_search",
+            "description": "Search the web for information",
+            "parameters": {
+              "type": "object",
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "description": "Search query"
+                },
+                "count": {
+                  "type": "integer",
+                  "description": "Number of results (1-10)",
+                  "minimum": 1,
+                  "maximum": 10
+                }
+              },
+              "required": [
+                "query"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    // 其他请求参数
+    "generation_config": {
+      "temperature": 0.7,
+      "max_output_tokens": 4096,
+      "top_p": 0.95,
+      "top_k": 40
+    }
+  },
+  // ============================================================
+  // response - Gemini 的响应结构
+  // 使用 candidates 数组（类似 OpenAI 的 choices）
+  // ============================================================
+  "response": {
+    // 模型版本
+    "modelVersion": "gemini-2.0-flash",
+    "responseId": "63aaacyRCLOEz7IPi9TnwAM",
+    // candidates 数组包含多种响应类型的示例
+    "candidates": [
+      // ----- candidate 0: 纯文本响应 -----
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Based on my analysis:\n\n1. **Weather in Tokyo**: It's currently sunny with 22°C and 45% humidity.\n\n2. **Image**: The image is a tiny 1x1 pixel red PNG.\n\n3. **Tokyo Attractions**: The top spots include Senso-ji Temple, Tokyo Tower, and Shibuya Crossing."
+            }
+          ]
+        },
+        "finishReason": "STOP",
+        "index": 0
+      },
+      // ----- candidate 1: function_call 响应（不带文本）-----
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "function_call": {
+                "name": "get_weather",
+                "args": {
+                  "location": "Osaka",
+                  "unit": "celsius"
+                }
+              },
+              // thoughtSignature 表示启用了思考模式
+              "thoughtSignature": "Eq0ICqoIAb4+9vvMQG5L8zXGkmQj2lDVkL45bPa1KDA1VVykzOyBdWjowB2M1boMGM0..."
+            }
+          ]
+        },
+        // finishReason 为 STOP（即使是 function_call）
+        "finishReason": "STOP",
+        "finishMessage": "Model generated function call(s).",
+        "index": 1
+      },
+      // ----- candidate 2: 同时包含 text 和 function_call -----
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "I'll also check the weather in Osaka for comparison."
+            },
+            {
+              "functionCall": {
+                "name": "get_weather",
+                "args": {
+                  "location": "Osaka"
+                }
+              }
+            },
+            {
+              "functionCall": {
+                "name": "list_dir",
+                "args": {
+                  "path": "/tmp"
+                }
+              }
+            }
+          ]
+        },
+        "finishReason": "STOP",
+        "index": 2
+      },
+      // ----- candidate 3: 因长度截断的响应 -----
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            {
+              "text": "Here is a very long response that got truncated due to max_output_tokens limit..."
+            }
+          ]
+        },
+        "finishReason": "MAX_TOKENS",
+        "index": 3
+      },
+      // ----- candidate 4: 安全过滤的响应 -----
+      {
+        "content": {
+          "role": "model",
+          "parts": []
+        },
+        "finishReason": "SAFETY",
+        "index": 4,
+        "safetyRatings": [
+          {
+            "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+            "probability": "HIGH"
+          }
+        ]
+      }
+    ],
+    // 使用统计
+    "usageMetadata": {
+      "promptTokenCount": 1500,
+      "candidatesTokenCount": 200,
+      "totalTokenCount": 1953,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 1450
+        },
+        {
+          "modality": "IMAGE",
+          "tokenCount": 50
+        }
+      ],
+      // 思考模式的 token 统计
+      "thoughtsTokenCount": 253
+    }
+  },
+  "error": null
+}

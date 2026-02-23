@@ -1,0 +1,683 @@
+// https://platform.claude.com/docs/en/api/messages/create
+{
+  "id": "example-request-001",
+  "timestamp": "2026-02-22T10:30:00Z",
+  "duration_ms": 2500,
+  "request": {
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 8192,
+    "temperature": 1,
+    // system 字段是数组形式，包含多个 text 块
+    "system": [
+      {
+        "type": "text",
+        "text": "You are a helpful coding assistant."
+      },
+      {
+        "type": "text",
+        "text": "Always explain your reasoning before taking action."
+      },
+      // 可以包含缓存控制
+      {
+        "type": "text",
+        "text": "Additional context...",
+        "cache_control": {
+          "type": "ephemeral"
+        }
+      }
+    ],
+    "messages": [
+      // ============================================================
+      // 用户消息示例
+      // ============================================================
+      // 用户消息 - content 为字符串（简单形式）
+      {
+        "role": "user",
+        "content": "Hello, what can you help me with?"
+      },
+      // 用户消息 - content 为数组形式（包含多个文本块）
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "What's in this image?"
+          },
+          {
+            "type": "text",
+            "text": "Also check the weather in Tokyo."
+          }
+        ]
+      },
+      // 用户消息 - 包含图片
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Describe this image:"
+          },
+          {
+            "type": "image",
+            "source": {
+              "type": "base64",
+              "media_type": "image/png",
+              "data": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+            }
+          }
+        ]
+      },
+      // 用户消息 - 包含 tool_result（工具执行结果）
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "call_abc123",
+            "content": "Sunny, 22°C, Humidity: 45%"
+            // is_error 可以省略，默认为 false
+          }
+        ]
+      },
+      // 用户消息 - tool_result 内容为数组形式
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "call_xyz789",
+            "content": [
+              {
+                "type": "text",
+                "text": "Command executed successfully."
+              },
+              {
+                "type": "text",
+                "text": "Output: file1.txt file2.txt"
+              }
+            ],
+            "is_error": false
+          }
+        ]
+      },
+      // 用户消息 - tool_result 表示错误
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "call_error001",
+            "content": "File does not exist.",
+            "is_error": true
+          }
+        ]
+      },
+      // 用户消息 - 多个 tool_result（对应多个工具调用）
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "tool_result",
+            "tool_use_id": "call_multi001",
+            "content": "Result from first tool",
+            "is_error": false
+          },
+          {
+            "type": "tool_result",
+            "tool_use_id": "call_multi002",
+            "content": "Error from second tool",
+            "is_error": true
+          },
+          {
+            "type": "tool_result",
+            "tool_use_id": "call_multi003",
+            "content": "Result from third tool"
+            // is_error 为 null 或不存在
+          }
+        ]
+      },
+      // ============================================================
+      // 助手消息示例
+      // ============================================================
+      // 助手消息 - 纯文本回复（content 为数组）
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "I can help you with coding tasks, file operations, and more."
+          }
+        ]
+      },
+      // 助手消息 - 包含 thinking 块（思考过程）
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "thinking",
+            "thinking": "The user is asking about disk space. I should use the Bash tool to run df -h.",
+            "signature": "abc123signature..."
+          },
+          {
+            "type": "text",
+            "text": "Let me check the disk space for you."
+          }
+        ]
+      },
+      // 助手消息 - 仅包含 thinking（无 text）
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "thinking",
+            "thinking": "Analyzing the request...",
+            "signature": ""
+          }
+        ]
+      },
+      // 助手消息 - 包含 tool_use（工具调用）
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "call_abc123",
+            "name": "get_weather",
+            "input": {
+              "location": "Tokyo",
+              "unit": "celsius"
+            }
+          }
+        ]
+      },
+      // 助手消息 - 包含 cache_control 的 tool_use
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "call_cached001",
+            "name": "Bash",
+            "input": {
+              "command": "df -h",
+              "description": "Check disk space"
+            },
+            "cache_control": {
+              "type": "ephemeral"
+            }
+          }
+        ]
+      },
+      // 助手消息 - 同时包含 thinking 和 tool_use
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "thinking",
+            "thinking": "I need to check the weather. Let me call the get_weather tool.",
+            "signature": "sig456..."
+          },
+          {
+            "type": "tool_use",
+            "id": "call_weather001",
+            "name": "get_weather",
+            "input": {
+              "location": "Tokyo"
+            }
+          }
+        ]
+      },
+      // 助手消息 - 多个 tool_use（并行工具调用）
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "tool_use",
+            "id": "call_read001",
+            "name": "Read",
+            "input": {
+              "file_path": "/path/to/file1.txt"
+            }
+          },
+          {
+            "type": "tool_use",
+            "id": "call_read002",
+            "name": "Read",
+            "input": {
+              "file_path": "/path/to/file2.txt"
+            }
+          },
+          {
+            "type": "tool_use",
+            "id": "call_read003",
+            "name": "Read",
+            "input": {
+              "file_path": "/path/to/file3.txt"
+            }
+          }
+        ]
+      },
+      // 助手消息 - 同时包含 text 和 tool_use
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "Let me search for more information."
+          },
+          {
+            "type": "tool_use",
+            "id": "call_search001",
+            "name": "web_search",
+            "input": {
+              "query": "Tokyo weather forecast"
+            }
+          }
+        ]
+      },
+      // 助手消息 - thinking + text + tool_use 组合
+      {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "thinking",
+            "thinking": "User wants to analyze the image and check weather. I'll do both.",
+            "signature": ""
+          },
+          {
+            "type": "text",
+            "text": "I'll analyze the image and check the weather."
+          },
+          {
+            "type": "tool_use",
+            "id": "call_combo001",
+            "name": "analyze_image",
+            "input": {
+              "description": "Analyze uploaded image"
+            }
+          },
+          {
+            "type": "tool_use",
+            "id": "call_combo002",
+            "name": "get_weather",
+            "input": {
+              "location": "Tokyo"
+            }
+          }
+        ]
+      }
+    ],
+    // ============================================================
+    // 工具定义
+    // ============================================================
+    "tools": [
+      {
+        "name": "get_weather",
+        "description": "Get current weather for a location",
+        // Claude 使用 input_schema 而非 parameters
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "type": "string",
+              "description": "The city name"
+            },
+            "unit": {
+              "type": "string",
+              "enum": [
+                "celsius",
+                "fahrenheit"
+              ],
+              "description": "Temperature unit"
+            }
+          },
+          "required": [
+            "location"
+          ]
+        }
+      },
+      {
+        "name": "Read",
+        "description": "Read a file from the filesystem",
+        "input_schema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "The absolute path to the file"
+            },
+            "offset": {
+              "type": "number",
+              "description": "Line number to start from"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Number of lines to read"
+            }
+          },
+          "required": [
+            "file_path"
+          ],
+          "additionalProperties": false
+        }
+      },
+      {
+        "name": "Bash",
+        "description": "Execute a bash command",
+        "input_schema": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "The command to execute"
+            },
+            "description": {
+              "type": "string",
+              "description": "Description of the command"
+            },
+            "timeout": {
+              "type": "number",
+              "description": "Timeout in milliseconds"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    ],
+    // 其他可选字段
+    "metadata": {
+      "user_id": "user_abc123"
+    },
+    "stream": true
+  },
+  // ============================================================
+  // 非流式响应示例
+  // ============================================================
+  "response": {
+    "id": "msg_example001",
+    "type": "message",
+    "role": "assistant",
+    "model": "claude-sonnet-4-20250514",
+    "stop_reason": "end_turn",
+    "stop_sequence": null,
+    // content 数组包含各种内容块
+    "content": [
+      // 示例1: 纯文本响应
+      {
+        "type": "text",
+        "text": "Based on the image and weather data, here's what I found..."
+      }
+    ],
+    "usage": {
+      "input_tokens": 1500,
+      "output_tokens": 200,
+      "cache_read_input_tokens": 500
+    }
+  },
+  "error": null,
+  // ============================================================
+  // 以下是不同响应类型的示例（供参考，实际响应只有一个）
+  // ============================================================
+  // 响应示例: 包含 thinking
+  "_response_with_thinking": {
+    "content": [
+      {
+        "type": "thinking",
+        "thinking": "Analyzing the user's request step by step...",
+        "signature": "thinking_sig_001"
+      },
+      {
+        "type": "text",
+        "text": "After careful analysis, here's my response..."
+      }
+    ],
+    "stop_reason": "end_turn"
+  },
+  // 响应示例: 包含 tool_use
+  "_response_with_tool_use": {
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "call_resp001",
+        "name": "get_weather",
+        "input": {
+          "location": "Tokyo",
+          "unit": "celsius"
+        }
+      }
+    ],
+    "stop_reason": "tool_use"
+  },
+  // 响应示例: thinking + tool_use
+  "_response_thinking_and_tool": {
+    "content": [
+      {
+        "type": "thinking",
+        "thinking": "User wants weather info. I'll call the get_weather tool.",
+        "signature": ""
+      },
+      {
+        "type": "tool_use",
+        "id": "call_resp002",
+        "name": "get_weather",
+        "input": {
+          "location": "Osaka"
+        }
+      }
+    ],
+    "stop_reason": "tool_use"
+  },
+  // 响应示例: 多个 tool_use
+  "_response_multiple_tools": {
+    "content": [
+      {
+        "type": "tool_use",
+        "id": "call_multi_resp001",
+        "name": "Read",
+        "input": {
+          "file_path": "/path/file1.txt"
+        }
+      },
+      {
+        "type": "tool_use",
+        "id": "call_multi_resp002",
+        "name": "Read",
+        "input": {
+          "file_path": "/path/file2.txt"
+        }
+      }
+    ],
+    "stop_reason": "tool_use"
+  },
+  // 响应示例: text + tool_use
+  "_response_text_and_tool": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Let me check that for you."
+      },
+      {
+        "type": "tool_use",
+        "id": "call_mixed001",
+        "name": "Bash",
+        "input": {
+          "command": "ls -la"
+        }
+      }
+    ],
+    "stop_reason": "tool_use"
+  },
+  // 响应示例: stop_reason 为 max_tokens（截断）
+  "_response_truncated": {
+    "content": [
+      {
+        "type": "text",
+        "text": "This is a very long response that got truncated..."
+      }
+    ],
+    "stop_reason": "max_tokens"
+  },
+  // ============================================================
+  // 流式响应示例
+  // ============================================================
+  // 流式文本响应
+  "_streaming_text_response": {
+    "stream": true,
+    "sse_lines": [
+      // message_start: 消息开始，包含 id, model 等元信息
+      "event: message_start",
+      "data: {\"type\":\"message_start\",\"message\":{\"type\":\"message\",\"id\":\"msg_stream001\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-sonnet-4-20250514\",\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":100,\"output_tokens\":1,\"cache_read_input_tokens\":0}}}",
+      // content_block_start: 内容块开始，type=text
+      "event: content_block_start",
+      "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}",
+      // content_block_delta: 文本增量，type=text_delta
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"Hello\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\"! I can\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"text_delta\",\"text\":\" help you.\"}}",
+      // content_block_stop: 内容块结束
+      "event: content_block_stop",
+      "data: {\"type\":\"content_block_stop\",\"index\":0}",
+      // message_delta: 消息结束信息，包含 stop_reason
+      "event: message_delta",
+      "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":10}}",
+      // message_stop: 消息完全结束
+      "event: message_stop",
+      "data: {\"type\":\"message_stop\"}"
+    ]
+  },
+  // 流式 thinking 响应
+  "_streaming_thinking_response": {
+    "stream": true,
+    "sse_lines": [
+      "event: message_start",
+      "data: {\"type\":\"message_start\",\"message\":{\"type\":\"message\",\"id\":\"msg_thinking001\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-sonnet-4-20250514\",\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":200,\"output_tokens\":1}}}",
+      // thinking 块开始
+      "event: content_block_start",
+      "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\"}}",
+      // thinking_delta: 思考内容增量
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"Let me\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" analyze\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" this...\"}}",
+      "event: content_block_stop",
+      "data: {\"type\":\"content_block_stop\",\"index\":0}",
+      // 接着是 text 块
+      "event: content_block_start",
+      "data: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"text_delta\",\"text\":\"Here's my answer.\"}}",
+      "event: content_block_stop",
+      "data: {\"type\":\"content_block_stop\",\"index\":1}",
+      "event: message_delta",
+      "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":25}}",
+      "event: message_stop",
+      "data: {\"type\":\"message_stop\"}"
+    ]
+  },
+  // 流式 tool_use 响应
+  "_streaming_tool_use_response": {
+    "stream": true,
+    "sse_lines": [
+      "event: message_start",
+      "data: {\"type\":\"message_start\",\"message\":{\"type\":\"message\",\"id\":\"msg_tool001\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-sonnet-4-20250514\",\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":150,\"output_tokens\":1}}}",
+      // tool_use 块开始，包含 id 和 name，input 为空对象
+      "event: content_block_start",
+      "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"call_stream_tool001\",\"name\":\"get_weather\",\"input\":{}}}",
+      // input_json_delta: 工具输入参数增量（JSON 字符串分块）
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"location\\\"\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"Tokyo\\\"\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"}\"}}",
+      "event: content_block_stop",
+      "data: {\"type\":\"content_block_stop\",\"index\":0}",
+      // stop_reason 为 tool_use
+      "event: message_delta",
+      "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":30}}",
+      "event: message_stop",
+      "data: {\"type\":\"message_stop\"}"
+    ]
+  },
+  // 流式 thinking + tool_use 响应（完整示例）
+  "_streaming_thinking_tool_response": {
+    "stream": true,
+    "sse_lines": [
+      "event: message_start",
+      "data: {\"type\":\"message_start\",\"message\":{\"type\":\"message\",\"id\":\"msg_combined001\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-sonnet-4-20250514\",\"stop_reason\":null,\"stop_sequence\":null,\"usage\":{\"input_tokens\":500,\"output_tokens\":1,\"cache_read_input_tokens\":0}}}",
+      // 第一个块: thinking
+      "event: content_block_start",
+      "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"thinking\",\"thinking\":\"\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\"User\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" wants\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"thinking_delta\",\"thinking\":\" disk space info.\"}}",
+      "event: content_block_stop",
+      "data: {\"type\":\"content_block_stop\",\"index\":0}",
+      // 第二个块: tool_use
+      "event: content_block_start",
+      "data: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"call_bash001\",\"name\":\"Bash\",\"input\":{}}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"command\\\"\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"df -h\\\"\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\", \\\"description\\\"\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": \\\"Check disk space\\\"\"}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"}\"}}",
+      "event: content_block_stop",
+      "data: {\"type\":\"content_block_stop\",\"index\":1}",
+      "event: message_delta",
+      "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":63}}",
+      "event: message_stop",
+      "data: {\"type\":\"message_stop\"}"
+    ]
+  },
+  // 流式多 tool_use 响应
+  "_streaming_multiple_tools_response": {
+    "stream": true,
+    "sse_lines": [
+      "event: message_start",
+      "data: {\"type\":\"message_start\",\"message\":{\"type\":\"message\",\"id\":\"msg_multi_tool001\",\"role\":\"assistant\",\"content\":[],\"model\":\"claude-sonnet-4-20250514\",\"stop_reason\":null,\"usage\":{\"input_tokens\":300,\"output_tokens\":1}}}",
+      // 第一个 tool_use
+      "event: content_block_start",
+      "data: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"call_read_001\",\"name\":\"Read\",\"input\":{}}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"file_path\\\": \\\"/path/file1.txt\\\"}\"}}",
+      "event: content_block_stop",
+      "data: {\"type\":\"content_block_stop\",\"index\":0}",
+      // 第二个 tool_use
+      "event: content_block_start",
+      "data: {\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"tool_use\",\"id\":\"call_read_002\",\"name\":\"Read\",\"input\":{}}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"file_path\\\": \\\"/path/file2.txt\\\"}\"}}",
+      "event: content_block_stop",
+      "data: {\"type\":\"content_block_stop\",\"index\":1}",
+      // 第三个 tool_use
+      "event: content_block_start",
+      "data: {\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"tool_use\",\"id\":\"call_read_003\",\"name\":\"Read\",\"input\":{}}}",
+      "event: content_block_delta",
+      "data: {\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"file_path\\\": \\\"/path/file3.txt\\\"}\"}}",
+      "event: content_block_stop",
+      "data: {\"type\":\"content_block_stop\",\"index\":2}",
+      "event: message_delta",
+      "data: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":90}}",
+      "event: message_stop",
+      "data: {\"type\":\"message_stop\"}"
+    ]
+  }
+}
