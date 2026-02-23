@@ -6,14 +6,23 @@
 
 <p align="center">
   <img src="./docs/images/screenshot.jpeg" alt="Screenshot" width="800"/>
-  <br/>
-  Trace demo: <a href="https://wang0618.github.io/llm-path/?data=nanobot.json" target="_blank">[nanobot]</a>, <a href="https://wang0618.github.io/llm-path/?data=claude-code.json" target="_blank">[claude code]</a>
 </p>
+
+<div align="center">
+
+Trace demo: [nanobot](https://wang0618.github.io/llm-path/?data=nanobot.json)[^nanobot], [claude code](https://wang0618.github.io/llm-path/?data=claude-code.json), [deep research](https://wang0618.github.io/llm-path/?data=adk-deepresearch.json)[^deepresearch]
+
+</div>
+
+[^nanobot]: [nanobot](https://github.com/HKUDS/nanobot) is a lightweight OpenClaw implementation in Python.
+
+[^deepresearch]: The deep research agent is from the Google ADK demo, see [deepresearch](https://github.com/google/adk-samples/blob/main/python/agents/deep-search/)
+
 
 ## Features
 
 - **Transparent Proxy** — Drop-in HTTP proxy that captures all LLM API traffic. Works with OpenAI, Anthropic (Claude), and Google (Gemini) APIs.
-- **Request Visualization** — Interactive web viewer to visualize the requests topology graph and show the context diff between requests.
+- **Request Visualization** — Interactive web viewer to visualize the request topology graph and show the context diff between requests.
 
 ## Installation
 
@@ -47,6 +56,23 @@ All requests will be transparently forwarded to your LLM provider and recorded t
 ```bash
 llm-path viewer trace.jsonl
 ```
+
+## Proxy for More Providers
+
+<details>
+<summary>Google Agent Development Kit (ADK)</summary>
+
+Start the proxy:
+```bash
+llm-path proxy --port 8080 --target https://generativelanguage.googleapis.com --output adk.jsonl
+```
+
+Set the environment variable for your ADK application:
+```bash
+GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8080
+```
+
+</details>
 
 ## CLI Reference
 
